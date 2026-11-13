@@ -441,3 +441,5 @@ fieldset.field legend { padding: 0; font-size: 13.5px; color: var(--ink-2); marg
 .share-status { font-size: 13.5px; color: var(--ink-3); min-height: 1.4em; margin-top: 10px; }
 .share-preview img { display: block; width: 270px; max-width: 100%; height: auto; border: 1px solid var(--rule); margin-top: 6px; }
 .sec.share { padding-top: 22px; }
+.link-btn { background: none; border: 0; padding: 0 4px; font-size: 14px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.btn:disabled { opacity: .45; cursor: default; }

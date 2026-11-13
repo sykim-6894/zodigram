@@ -6,7 +6,7 @@ import { lunarToSolar, solarToLunar, formatLunar, LUNAR_MIN_YEAR, LUNAR_MAX_YEAR
 import { MAJOR_ARCANA, SPREAD_POSITIONS } from './data/tarot.js';
 import { hexagramSvg, coinSvg } from './ui/glyphs.js';
 import { getToday } from './core/fortune.js';
-import { shareTodayCard, shareLink } from './ui/share.js';
+import { prepareCard, shareCard, shareLink, downloadCard } from './ui/share.js';
 import * as V from './ui/views.js';
 
 const view = document.getElementById('view');
@@ -91,24 +91,36 @@ function renderCalendar(scrollToDetail = false) {
   }
 }
 
-/* 오늘 운세 공유 */
+/* 오늘 운세 공유: 화면이 열릴 때 카드를 미리 만들고, 누르면 바로 공유 */
 function bindShare() {
   const btn = document.getElementById('shareCard');
   if (!btn) return;
   const status = document.getElementById('shareStatus');
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    status.textContent = '카드를 만드는 중…';
-    try {
-      status.textContent = await shareTodayCard(loadProfile());
-    } catch (e) {
-      status.textContent = '카드를 만들지 못했습니다. 다시 시도해 주세요.';
-    } finally {
-      btn.disabled = false;
-    }
+  const preview = document.getElementById('sharePreview');
+  const save = document.getElementById('saveCard');
+  let card = null;
+  btn.disabled = true;
+  status.textContent = '카드를 준비하는 중…';
+  prepareCard(loadProfile()).then((c) => {
+    card = c;
+    preview.innerHTML = `<img src="${c.url}" alt="오늘의 운세 카드" width="270" height="338">`;
+    btn.disabled = false;
+    status.textContent = '';
+  }).catch(() => {
+    status.textContent = '카드를 만들지 못했습니다. 새로 고침 후 다시 시도해 주세요.';
   });
-  document.getElementById('copyLink')?.addEventListener('click', async () => {
-    status.textContent = await shareLink();
+
+  btn.addEventListener('click', () => {
+    if (!card) return;
+    shareCard(card).then((msg) => { status.textContent = msg; });
+  });
+  save?.addEventListener('click', () => {
+    if (!card) return;
+    downloadCard(card);
+    status.textContent = '이미지를 저장했습니다.';
+  });
+  document.getElementById('copyLink')?.addEventListener('click', () => {
+    shareLink().then((msg) => { status.textContent = msg; });
   });
 }
 

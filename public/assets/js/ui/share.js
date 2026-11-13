@@ -148,55 +148,63 @@ export async function drawTodayCard(profile) {
 
 export const siteUrl = () => `${location.origin}${location.pathname}`;
 
-/** 클립보드 복사(실패하면 false). 사용자 클릭 직후에 불러야 브라우저가 허용한다. */
-async function copyText(t) {
-  try { await navigator.clipboard.writeText(t); return true; } catch { return false; }
-}
-
 /**
- * 카드를 만들어 공유(가능하면) 또는 저장하고, 결과 문장을 돌려준다.
- * 카카오톡 등 일부 앱은 이미지와 함께 보낸 글을 버리므로, 주소를 클립보드에도 미리 넣어 둔다.
+ * 카드 이미지를 미리 만들어 둔다.
+ * 휴대폰 브라우저(특히 iOS Safari)는 버튼을 누른 "직후"에만 공유 창을 허용하므로,
+ * 누른 뒤에 그림을 그리거나 다른 작업을 기다리면 공유가 중간에 실패할 수 있다.
  */
-export async function shareTodayCard(profile) {
-  const link = siteUrl();
-  const copied = await copyText(link);
+export async function prepareCard(profile) {
   const canvas = await drawTodayCard(profile);
   const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
-  const key = getToday().key;
-  const file = new File([blob], `zodigram-${key}.png`, { type: 'image/png' });
-  const url = URL.createObjectURL(blob);
-  const tail = copied ? ' 주소도 복사해 두었으니 대화창에 붙여 넣으면 함께 보낼 수 있어요.' : '';
+  const file = new File([blob], `zodigram-${getToday().key}.png`, { type: 'image/png', lastModified: Date.now() });
+  return { file, url: URL.createObjectURL(blob) };
+}
 
-  const preview = document.getElementById('sharePreview');
-  if (preview) preview.innerHTML = `<img src="${url}" alt="오늘의 운세 카드" width="270" height="338">`;
-
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: 'Zodigram · 오늘의 운세', text: `오늘의 운세 보기 ${link}`, url: link });
-      return `공유했습니다.${tail}`;
-    } catch (e) {
-      if (e?.name === 'AbortError') return '공유를 취소했습니다.';
-    }
-  }
+export function downloadCard(card) {
   const a = document.createElement('a');
-  a.href = url;
-  a.download = file.name;
+  a.href = card.url;
+  a.download = card.file.name;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  return `이미지를 저장했습니다.${tail}`;
+}
+
+/**
+ * 미리 만든 카드를 곧바로 공유한다. 이 함수 안에서는 공유 창을 열기 전에 await 하지 않는다.
+ * - 이미지 + 짧은 글(주소 포함)만 보낸다. title·url 을 함께 넣으면 일부 앱에서 전달이 멈추는 경우가 있다.
+ * - 이미지에 붙은 글을 버리는 앱(카카오톡 등)에 대비해 주소를 클립보드에도 넣는다(기다리지 않음).
+ * - 공유가 실패하면 이미지를 저장한다.
+ */
+export function shareCard(card) {
+  const link = siteUrl();
+  navigator.clipboard?.writeText(link).catch(() => {});
+  const data = { files: [card.file], text: `오늘의 운세 ${link}` };
+  if (navigator.share && navigator.canShare?.(data)) {
+    return navigator.share(data)
+      .then(() => '공유했습니다. 주소는 복사해 두었으니 필요하면 대화창에 붙여 넣으세요.')
+      .catch((e) => {
+        if (e?.name === 'AbortError') return '공유를 취소했습니다.';
+        downloadCard(card);
+        return '이 브라우저에서는 이미지 공유가 되지 않아 저장했습니다. 저장된 이미지를 직접 보내 주세요.';
+      });
+  }
+  downloadCard(card);
+  return Promise.resolve('이미지를 저장했습니다. 주소는 복사해 두었습니다.');
 }
 
 /** 링크만 공유(미리보기 카드가 붙는다). 공유 창이 없으면 복사. */
-export async function shareLink() {
+export function shareLink() {
   const link = siteUrl();
   if (navigator.share) {
-    try {
-      await navigator.share({ title: 'Zodigram · 별과 괘', text: '동양의 괘, 서양의 별로 읽는 오늘의 운세', url: link });
-      return '공유했습니다.';
-    } catch (e) {
-      if (e?.name === 'AbortError') return '공유를 취소했습니다.';
-    }
+    return navigator.share({ title: 'Zodigram · 별과 괘', text: '동양의 괘, 서양의 별로 읽는 오늘의 운세', url: link })
+      .then(() => '공유했습니다.')
+      .catch((e) => (e?.name === 'AbortError' ? '공유를 취소했습니다.' : copyLink(link)));
   }
-  return (await copyText(link)) ? '주소를 복사했습니다.' : link;
+  return copyLink(link);
+}
+
+function copyLink(link) {
+  return (navigator.clipboard?.writeText(link) ?? Promise.reject())
+    .then(() => '주소를 복사했습니다.')
+    .catch(() => link);
 }

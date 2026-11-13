@@ -108,8 +108,9 @@ export function homeView(profile) {
 
   <section class="sec share">
     <div class="share-row">
-      <button class="btn" id="shareCard">오늘 운세 카드 저장·공유</button>
+      <button class="btn" id="shareCard">운세 카드 공유</button>
       <button class="btn ghost" id="copyLink">링크 공유</button>
+      <button class="link-btn" id="saveCard">이미지로 저장</button>
     </div>
     <p class="share-status" id="shareStatus" aria-live="polite"></p>
     <div class="share-preview" id="sharePreview"></div>
