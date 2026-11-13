@@ -91,3 +91,22 @@ test('음력: 왕복 변환과 잘못된 날짜', () => {
   assert.ok(lunarToSolar(2026, 6, 1, true).error);
   assert.ok(lunarToSolar(1899, 1, 1).error);
 });
+
+import { monthCalendar, dayInfo } from '../public/assets/js/core/almanac.js';
+
+test('길일 달력: 절기·공휴일·손 없는 날', () => {
+  const nov = monthCalendar(2026, 11).cells.filter(Boolean);
+  assert.equal(nov.length, 30);
+  assert.equal(monthCalendar(2026, 11).cells.length % 7, 0);
+  assert.equal(nov.find((c) => c.term === '입동').day, 7);
+  assert.equal(nov.find((c) => c.term === '소설').day, 22);
+  assert.deepEqual(nov.filter((c) => c.sonEmpty).map((c) => c.day), [8, 17, 18, 27, 28]);
+  assert.equal(dayInfo(2026, 2, 17).holiday, '설날');
+  assert.equal(dayInfo(2026, 2, 16).holiday, '설날 연휴');
+  assert.equal(dayInfo(2026, 9, 25).holiday, '추석');
+  assert.equal(dayInfo(2026, 5, 24).holiday, '부처님오신날');
+  assert.equal(dayInfo(2026, 12, 22).term, '동지'); // 2026-12-22 05시대(한국시)
+  const mine = monthCalendar(2026, 11, { year: 1990, month: 5, day: 15, hour: 10, minute: 30 });
+  assert.ok(mine.hasProfile);
+  assert.equal(mine.cells.filter(Boolean).find((c) => c.day === 13).tenGod, '겁재');
+});

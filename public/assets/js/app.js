@@ -5,9 +5,15 @@ import { trueRandom, shuffle } from './core/seed.js';
 import { lunarToSolar, solarToLunar, formatLunar, LUNAR_MIN_YEAR, LUNAR_MAX_YEAR } from './core/lunar.js';
 import { MAJOR_ARCANA, SPREAD_POSITIONS } from './data/tarot.js';
 import { hexagramSvg, coinSvg } from './ui/glyphs.js';
+import { getToday } from './core/fortune.js';
+import { shareTodayCard } from './ui/share.js';
 import * as V from './ui/views.js';
 
 const view = document.getElementById('view');
+
+// 달력 화면 상태(보고 있는 달, 고른 날)
+const nowKst = getToday().date;
+const cal = { year: nowKst.year, month: nowKst.month, sel: nowKst.day };
 
 const routes = {
   '/': () => V.homeView(loadProfile()),
@@ -15,6 +21,7 @@ const routes = {
   '/east/iching': () => V.ichingView(),
   '/west': () => V.westView(loadProfile()),
   '/west/tarot': () => V.tarotView(),
+  '/calendar': () => V.calendarView(loadProfile(), cal, cal.sel),
   '/me': () => V.meView(loadProfile()),
   '/about': () => V.aboutView(),
 };
@@ -23,6 +30,8 @@ const binders = {
   '/me': bindProfileForm,
   '/east/iching': bindIching,
   '/west/tarot': bindTarot,
+  '/calendar': bindCalendar,
+  '/': bindShare,
 };
 
 function currentPath() {
@@ -42,6 +51,70 @@ function render() {
   });
   binders[path]?.();
   window.scrollTo(0, 0);
+}
+
+/* 길일 달력 */
+function bindCalendar() {
+  const go = (dy, dm) => {
+    let m = cal.month + dm, y = cal.year + dy;
+    if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
+    if (y < 1900 || y > 2100) return;
+    cal.year = y; cal.month = m;
+    const t = getToday().date;
+    cal.sel = y === t.year && m === t.month ? t.day : null;
+    renderCalendar();
+  };
+  document.getElementById('calPrev').addEventListener('click', () => go(0, -1));
+  document.getElementById('calNext').addEventListener('click', () => go(0, 1));
+  document.getElementById('calToday').addEventListener('click', () => {
+    const t = getToday().date;
+    cal.year = t.year; cal.month = t.month; cal.sel = t.day;
+    renderCalendar();
+  });
+  view.querySelector('.cal').addEventListener('click', (ev) => {
+    const b = ev.target.closest('.cal-cell[data-d]');
+    if (!b) return;
+    cal.sel = Number(b.dataset.d);
+    renderCalendar(true);
+  });
+}
+
+// 달력만 다시 그리고 스크롤 위치는 유지한다
+function renderCalendar(scrollToDetail = false) {
+  const y = window.scrollY;
+  view.innerHTML = routes['/calendar']();
+  bindCalendar();
+  window.scrollTo(0, y);
+  if (scrollToDetail) {
+    const d = document.getElementById('calDetail');
+    if (d.getBoundingClientRect().top > window.innerHeight - 120) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+/* 오늘 운세 공유 */
+function bindShare() {
+  const btn = document.getElementById('shareCard');
+  if (!btn) return;
+  const status = document.getElementById('shareStatus');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    status.textContent = '카드를 만드는 중…';
+    try {
+      status.textContent = await shareTodayCard(loadProfile());
+    } catch (e) {
+      status.textContent = '카드를 만들지 못했습니다. 다시 시도해 주세요.';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  document.getElementById('copyLink')?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(location.origin + location.pathname);
+      status.textContent = '주소를 복사했습니다.';
+    } catch {
+      status.textContent = location.origin + location.pathname;
+    }
+  });
 }
 
 /* 내 정보 */

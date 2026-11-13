@@ -1,0 +1,175 @@
+// 오늘의 운세를 1080×1350 이미지 카드로 그려 공유하거나 저장한다. (외부 라이브러리 없이 Canvas)
+import { getToday, getEast, getWest, getDailyHexagram } from '../core/fortune.js';
+
+const W = 1080, H = 1350, PAD = 92;
+const C = {
+  paper: '#F4F0E8', paper2: '#ECE6DA', ink: '#1E1C19', ink2: '#57524A', ink3: '#8C8577', rule: '#D6CDBD',
+  east: '#A33B27', west: '#2B4664',
+};
+const SERIF = '"Noto Serif KR", "Batang", serif';
+const SANS = '"Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif';
+const SITE = 'zodigram.ksy2202.workers.dev';
+
+/** 띄어쓰기 단위로 줄바꿈(한국어 keep-all). 한 단어가 너무 길면 글자 단위로 자른다. */
+function wrap(ctx, text, maxW, maxLines) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let line = '';
+  const push = (l) => { if (lines.length < maxLines) lines.push(l); };
+  for (const w of words) {
+    const t = line ? `${line} ${w}` : w;
+    if (ctx.measureText(t).width <= maxW) { line = t; continue; }
+    if (line) push(line);
+    line = w;
+    while (ctx.measureText(line).width > maxW) {
+      let i = line.length;
+      while (i > 1 && ctx.measureText(line.slice(0, i)).width > maxW) i--;
+      push(line.slice(0, i));
+      line = line.slice(i);
+    }
+  }
+  if (line) push(line);
+  const overflow = lines.join(' ').replace(/\s/g, '').length < text.replace(/\s/g, '').length;
+  if (overflow && lines.length) {
+    let last = lines[lines.length - 1];
+    while (last.length && ctx.measureText(`${last}…`).width > maxW) last = last.slice(0, -1);
+    lines[lines.length - 1] = `${last.replace(/[\s,.]+$/, '')}…`;
+  }
+  return lines;
+}
+
+function text(ctx, str, x, y, font, color, align = 'left') {
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.fillText(str, x, y);
+}
+
+function rule(ctx, y, weight = 1, color = C.ink) {
+  ctx.fillStyle = color;
+  ctx.fillRect(PAD, y, W - PAD * 2, weight);
+}
+
+function seal(ctx, x, y, ch, color, label) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, 46, 46);
+  text(ctx, ch, x + 23, y + 34, `600 27px ${SERIF}`, C.paper, 'center');
+  text(ctx, label, x + 62, y + 32, `500 25px ${SANS}`, C.ink2);
+}
+
+/** 단락: 반환값은 다음 y */
+function block(ctx, y, { side, kicker, title, body }) {
+  seal(ctx, PAD, y, side === 'east' ? '東' : '西', side === 'east' ? C.east : C.west, side === 'east' ? '동양' : '서양');
+  y += 92;
+  if (kicker) { text(ctx, kicker, PAD, y, `400 24px ${SANS}`, C.ink3); y += 72; }
+  ctx.font = `600 50px ${SERIF}`;
+  for (const l of wrap(ctx, title, W - PAD * 2, 2)) { text(ctx, l, PAD, y, `600 50px ${SERIF}`, C.ink); y += 66; }
+  y += 6;
+  ctx.font = `400 29px ${SANS}`;
+  for (const l of wrap(ctx, body, W - PAD * 2, 3)) { text(ctx, l, PAD, y, `400 29px ${SANS}`, C.ink2); y += 46; }
+  return y;
+}
+
+function cardContent(profile) {
+  const today = getToday();
+  const t = today.date;
+  const l = today.lunar;
+  const head = `${t.year}. ${t.month}. ${t.day}. ${today.weekday}요일 · 음력 ${l.leap ? '윤' : ''}${l.month}. ${l.day}. · ${today.pillar.hanja}일`;
+  if (profile) {
+    const e = getEast(profile);
+    const w = getWest(profile);
+    return {
+      head,
+      greet: profile.name ? `${profile.name} 님의 오늘` : '오늘의 운세',
+      east: { side: 'east', kicker: `오늘의 일진 ${e.daily.todayPillar.hanja} · ${e.daily.tenGod} · ${e.animal.name}띠`, title: e.daily.title, body: e.daily.text },
+      west: { side: 'west', kicker: `${w.sign.ko} · 달이 ${w.moon.moonSignName}에 · 오늘의 카드 ${w.tarot.card.ko}${w.tarot.reversed ? '(역)' : ''}`, title: `${w.moon.houseInfo.area}에 빛이 듭니다`, body: w.moon.houseInfo.text },
+      quote: today.eastQuote,
+    };
+  }
+  const hex = getDailyHexagram(null);
+  return {
+    head,
+    greet: '오늘의 운세',
+    east: { side: 'east', kicker: `오늘의 괘 · ${hex.num}. ${hex.fullName} ${hex.hanja}`, title: hex.keyword, body: hex.text },
+    west: { side: 'west', kicker: `오늘의 달 · ${today.moon.name} ${Math.round(today.moon.illumination * 100)}%`, title: today.westQuote.text, body: today.westQuote.src },
+    quote: today.eastQuote,
+  };
+}
+
+export async function drawTodayCard(profile) {
+  const c = cardContent(profile);
+  const all = JSON.stringify(c) + 'Zodigram별과괘東西동양서양…·';
+  if (document.fonts?.load) {
+    await Promise.all([
+      document.fonts.load(`600 50px ${SERIF}`, all),
+      document.fonts.load(`400 34px ${SERIF}`, all),
+      document.fonts.load(`400 29px ${SANS}`, all),
+      document.fonts.load(`500 25px ${SANS}`, all),
+    ]).catch(() => {});
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = C.paper;
+  ctx.fillRect(0, 0, W, H);
+
+  // 머리
+  text(ctx, 'Zodigram', PAD, 150, `600 60px ${SERIF}`, C.ink);
+  ctx.font = `600 60px ${SERIF}`;
+  const bw = ctx.measureText('Zodigram').width;
+  text(ctx, '별과 괘', PAD + bw + 22, 150, `400 30px ${SERIF}`, C.ink3);
+  rule(ctx, 186, 3);
+  text(ctx, c.head, PAD, 232, `400 25px ${SANS}`, C.ink2);
+  rule(ctx, 254, 1.5);
+  text(ctx, c.greet, PAD, 316, `400 28px ${SERIF}`, C.ink2);
+
+  let y = block(ctx, 350, c.east);
+  rule(ctx, y + 4, 1, C.rule);
+  y = block(ctx, y + 44, c.west);
+
+  // 한마디
+  const qy = Math.max(y + 24, H - 250);
+  rule(ctx, qy, 1.5);
+  ctx.fillStyle = C.east;
+  ctx.fillRect(PAD, qy + 34, 4, 82);
+  ctx.font = `400 34px ${SERIF}`;
+  const ql = wrap(ctx, c.quote.text, W - PAD * 2 - 30, 1);
+  text(ctx, ql[0], PAD + 26, qy + 70, `400 34px ${SERIF}`, C.ink);
+  text(ctx, c.quote.src, PAD + 26, qy + 112, `400 23px ${SANS}`, C.ink3);
+
+  // 바닥
+  rule(ctx, H - 92, 3);
+  text(ctx, SITE, PAD, H - 50, `500 24px ${SANS}`, C.ink2);
+  text(ctx, '운세는 재미로 봐 주세요', W - PAD, H - 50, `400 22px ${SANS}`, C.ink3, 'right');
+  return canvas;
+}
+
+/** 카드를 만들어 공유(가능하면) 또는 저장하고, 결과 문장을 돌려준다 */
+export async function shareTodayCard(profile) {
+  const canvas = await drawTodayCard(profile);
+  const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+  const key = getToday().key;
+  const file = new File([blob], `zodigram-${key}.png`, { type: 'image/png' });
+  const url = URL.createObjectURL(blob);
+
+  const preview = document.getElementById('sharePreview');
+  if (preview) preview.innerHTML = `<img src="${url}" alt="오늘의 운세 카드" width="270" height="338">`;
+
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Zodigram · 오늘의 운세', text: `오늘의 운세 — ${location.origin}${location.pathname}` });
+      return '공유했습니다.';
+    } catch (e) {
+      if (e?.name === 'AbortError') return '공유를 취소했습니다.';
+    }
+  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  return '이미지를 저장했습니다.';
+}

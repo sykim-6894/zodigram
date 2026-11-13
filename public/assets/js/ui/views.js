@@ -1,8 +1,9 @@
 // 화면 템플릿. 각 함수는 HTML 문자열을 반환하고, 이벤트 연결은 app.js가 맡는다.
 import { getToday, getEast, getWest, getDailyHexagram } from '../core/fortune.js';
+import { monthCalendar } from '../core/almanac.js';
 import { STEMS_KO, BRANCHES_KO, STEMS, BRANCHES, ELEMENTS, ELEMENTS_HANJA, STEM_ELEMENT, BRANCH_ELEMENT, tenGod, BRANCH_MAIN_STEM } from '../core/saju.js';
 import { TRIGRAMS } from '../data/iching.js';
-import { FLOW_LABEL } from '../data/saju-text.js';
+import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
 import { glyph, roman, hexagramSvg } from './glyphs.js';
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -104,6 +105,15 @@ export function homeView(profile) {
     <section class="col east">${sideLabel('east')}${eastBody}</section>
     <section class="col west">${sideLabel('west')}${westBody}</section>
   </div>
+
+  <section class="sec share">
+    <div class="share-row">
+      <button class="btn" id="shareCard">오늘 운세 카드 저장·공유</button>
+      <button class="btn ghost" id="copyLink">주소 복사</button>
+    </div>
+    <p class="share-status" id="shareStatus" aria-live="polite"></p>
+    <div class="share-preview" id="sharePreview"></div>
+  </section>
 
   <section class="sec">
     ${secHead('오늘의 한마디')}
@@ -413,4 +423,78 @@ export function aboutView() {
       </ul></div>
   </section>
   <section class="sec"><p class="note">운세는 재미와 성찰을 위한 것입니다. 건강·투자·법률처럼 중요한 결정은 전문가와 상의하세요.</p></section>`;
+}
+
+/* ───────── 길일 달력 ───────── */
+const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+const REL_SHORT = { harmony: '합', trine: '합', clash: '충' };
+const REL_TEXT = {
+  same: '내 일지와 같은 기운의 날', harmony: '내 일지와 육합을 이루는 날', trine: '내 일지와 삼합을 이루는 날',
+  clash: '내 일지와 충(沖)하는 날 — 큰 결정은 피하는 편이 좋습니다', harm: '내 일지와 해(害)의 날 — 말조심', neutral: '내 일지와 무난한 날',
+};
+
+function lunarShort(l) {
+  if (l.day === 1) return `${l.leap ? '윤' : ''}${l.month}월`;
+  return `${l.month}.${l.day}`;
+}
+
+export function calendarView(profile, ym, selected) {
+  const cal = monthCalendar(ym.year, ym.month, profile);
+  const today = getToday().date;
+  const isToday = (c) => c.year === today.year && c.month === today.month && c.day === today.day;
+  const cells = cal.cells.map((c) => {
+    if (!c) return '<div class="cal-cell empty"></div>';
+    const cls = ['cal-cell'];
+    if (c.weekday === 0 || c.holiday) cls.push('red');
+    else if (c.weekday === 6) cls.push('sat');
+    if (isToday(c)) cls.push('today');
+    if (selected === c.day) cls.push('sel');
+    if (c.lunar.day === 1) cls.push('l1');
+    const tag = c.holiday || c.term || '';
+    const rel = c.relation && REL_SHORT[c.relation] ? `<span class="c-rel ${c.relation}">${REL_SHORT[c.relation]}</span>` : '';
+    return `<button class="${cls.join(' ')}" data-d="${c.day}" aria-label="${c.month}월 ${c.day}일${c.sonEmpty ? ', 손 없는 날' : ''}${tag ? ', ' + tag : ''}">
+      <span class="c-d">${c.day}</span>${c.sonEmpty ? '<span class="c-son" title="손 없는 날"></span>' : ''}
+      <span class="c-l">${lunarShort(c.lunar)}</span>
+      <span class="c-p">${c.pillar.hanja}</span>
+      <span class="c-tag">${tag}</span>${rel}
+    </button>`;
+  }).join('');
+
+  const real = cal.cells.filter(Boolean);
+  const sonDays = real.filter((c) => c.sonEmpty).map((c) => c.day);
+  const terms = real.filter((c) => c.term).map((c) => `${c.term} ${c.day}일`);
+
+  return `<div class="page-head"><h1>길일 달력</h1></div>
+  <div class="cal-bar">
+    <button class="icon-btn" id="calPrev" aria-label="이전 달">‹</button>
+    <h2 class="cal-title">${ym.year}년 ${ym.month}월</h2>
+    <button class="icon-btn" id="calNext" aria-label="다음 달">›</button>
+    <button class="btn ghost sm" id="calToday">오늘</button>
+  </div>
+  <div class="cal" role="grid">
+    ${WEEK.map((w, i) => `<div class="cal-wd${i === 0 ? ' red' : i === 6 ? ' sat' : ''}">${w}</div>`).join('')}
+    ${cells}
+  </div>
+  <ul class="cal-legend">
+    <li><span class="c-son"></span>손 없는 날</li>
+    ${cal.hasProfile ? '<li><span class="c-rel harmony">합</span>내 일지와 합</li><li><span class="c-rel clash">충</span>내 일지와 충</li>' : '<li><a href="#/me">생년월일을 입력하면</a> 나와 맞는 날·부딪히는 날도 표시됩니다</li>'}
+  </ul>
+  <div id="calDetail">${selected ? calendarDetail(real.find((c) => c.day === selected), cal.hasProfile) : ''}</div>
+  <section class="sec two">
+    <div>${secHead('이달의 손 없는 날')}<p class="cal-list">${sonDays.map((d) => `${d}일`).join(' · ')}</p>
+      <p class="note">음력 날짜 끝자리가 9와 0인 날로, 이사·개업·혼례 날짜로 예부터 많이 고릅니다.</p></div>
+    <div>${secHead('이달의 절기')}<p class="cal-list">${terms.join(' · ') || '—'}</p>
+      <p class="note">공휴일은 법정 공휴일 기준이며 대체공휴일과 임시공휴일은 표시하지 않습니다.</p></div>
+  </section>`;
+}
+
+export function calendarDetail(c, hasProfile) {
+  if (!c) return '';
+  const g = c.tenGod ? TEN_GOD_DAY[c.tenGod] : null;
+  return `<div class="cal-detail">
+    <p class="kicker">${c.month}월 ${c.day}일 ${WEEK[c.weekday]}요일 · 음력 ${c.lunar.leap ? '윤' : ''}${c.lunar.month}월 ${c.lunar.day}일 · ${c.pillar.hanja}(${c.pillar.hangul})일</p>
+    ${c.holiday || c.term ? `<p class="cal-flags">${[c.holiday, c.term && `절기 ${c.term}`].filter(Boolean).join(' · ')}</p>` : ''}
+    <p>${c.sonEmpty ? '<b>손 없는 날</b>입니다. 이사나 개업처럼 움직이는 일에 좋다고 여겨 온 날이에요.' : `손이 <b>${c.sonDir}쪽</b>에 있는 날입니다. 그 방향으로의 이사는 예부터 피했습니다.`}</p>
+    ${hasProfile && g ? `<h3 class="headline sm">${g.title}</h3><p>${g.text}</p><p class="note">${c.tenGod}의 날 · ${REL_TEXT[c.relation]}</p>` : ''}
+  </div>`;
 }
