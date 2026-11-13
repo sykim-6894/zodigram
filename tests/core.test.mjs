@@ -118,11 +118,22 @@ test('오늘의 점수: 항목 합과 일치하고 하루 동안 같다', () => 
   const now = new Date('2026-11-13T03:00:00Z');
   const s = totalScore(getEast(p, now), getWest(p, now));
   for (const part of [s.east, s.west]) {
-    const raw = s.base + part.items.reduce((a, i) => a + i.delta, 0);
-    assert.equal(part.score, Math.max(30, Math.min(96, raw)));
+    const raw = part.base + part.items.reduce((a, i) => a + i.delta, 0);
+    assert.equal(part.score, Math.max(50, Math.min(100, raw)));
   }
   assert.equal(s.total, Math.round((s.east.score + s.west.score) / 2));
   const later = new Date('2026-11-13T12:00:00Z');
   assert.equal(totalScore(getEast(p, later), getWest(p, later)).total, s.total);
   assert.ok(s.tier && s.advice);
+});
+
+test('오늘의 점수: 50~100 범위', () => {
+  for (let y = 1970; y < 2005; y += 7) {
+    for (let k = 0; k < 20; k += 4) {
+      const now = new Date(Date.UTC(2026, 10, 1 + k, 3));
+      const p = { year: y, month: (y % 12) + 1, day: (y % 27) + 1 };
+      const s = totalScore(getEast(p, now), getWest(p, now));
+      for (const v of [s.total, s.east.score, s.west.score]) assert.ok(v >= 50 && v <= 100, String(v));
+    }
+  }
 });

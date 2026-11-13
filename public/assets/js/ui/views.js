@@ -522,11 +522,11 @@ export function shareFallbackHtml() {
 /* ───────── 오늘의 점수 ───────── */
 const sign = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '±0');
 
-function scoreList(side, title, part, base) {
+function scoreList(side, title, part) {
   return `<div class="why ${side}">
     <h3 class="why-h"><span>${title}</span><b>${part.score}</b></h3>
     <ul>
-      <li><span>기본 점수</span><em>${base}</em></li>
+      <li><span>기본 점수</span><em>${part.base}</em></li>
       ${part.items.map((i) => `<li class="${i.delta > 0 ? 'up' : i.delta < 0 ? 'down' : ''}"><span>${esc(i.label)}<small>${esc(i.detail)}</small></span><em>${sign(i.delta)}</em></li>`).join('')}
     </ul>
   </div>`;
@@ -548,8 +548,8 @@ export function scoreBlock(s) {
     <details class="score-why">
       <summary>점수가 나온 이유</summary>
       <div class="why-grid">
-        ${scoreList('east', '동양', s.east, s.base)}
-        ${scoreList('west', '서양', s.west, s.base)}
+        ${scoreList('east', '동양', s.east)}
+        ${scoreList('west', '서양', s.west)}
       </div>
       <p class="note">종합 점수는 동양과 서양 점수의 평균입니다. 모든 항목은 오늘의 일진·달의 위치·내 생년월일로 계산되며, 같은 날에는 바뀌지 않습니다.</p>
     </details>
