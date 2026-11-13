@@ -212,6 +212,7 @@ function bindProfileForm() {
       lunar: b.calendar === 'lunar' ? b.lunar : null,
       year: b.solar.year, month: b.solar.month, day: b.solar.day,
       hour, minute,
+      place: el.place.value,
     });
     location.hash = '#/';
   });

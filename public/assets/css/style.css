@@ -482,3 +482,52 @@ fieldset.field legend { padding: 0; font-size: 13.5px; color: var(--ink-2); marg
 .why li.down em { color: var(--east); }
 .score-word { margin: 0; padding: 2px 0 2px 14px; border-left: 2px solid var(--ink-3); font: 400 16.5px/1.6 var(--serif); color: var(--ink); }
 @media (min-width: 760px) { .score-word { grid-column: 1 / -1; } }
+.field select {
+  width: 100%; height: 46px; padding: 0 10px; font: 16px var(--sans); color: var(--ink);
+  background: transparent; border: 1px solid var(--rule); border-bottom-color: var(--ink-2); border-radius: 0;
+}
+.field select option { background: var(--paper); color: var(--ink); }
+
+/* ── 점성술: 출생 차트 ── */
+:root { --el-air: #6E8A8F; }
+@media (prefers-color-scheme: dark) { :root { --el-air: #9FBBC0; } }
+.el-air { color: var(--el-air); }
+.natal { display: grid; gap: 22px; align-items: start; }
+@media (min-width: 760px) { .natal { grid-template-columns: 320px 1fr; gap: 36px; } }
+.natal-wheel { max-width: 340px; width: 100%; margin: 0 auto; }
+.wheel { width: 100%; height: auto; display: block; }
+.wheel .w-ring { fill: none; stroke: var(--ink); stroke-width: 1; }
+.wheel .w-inner { fill: var(--paper-2); stroke: var(--ink-2); stroke-width: .8; }
+.wheel .w-div { stroke: var(--ink); stroke-width: .8; }
+.wheel .w-house { stroke: var(--rule); stroke-width: .8; }
+.wheel .w-tick { stroke: var(--ink-2); stroke-width: 1; }
+.wheel .w-axis { stroke: var(--west); stroke-width: 1.2; }
+.wheel .w-asp { stroke-width: .8; opacity: .7; }
+.wheel .w-asp.trine { stroke: var(--west); }
+.wheel .w-asp.square { stroke: var(--east); stroke-dasharray: 3 2; }
+.wheel text { text-anchor: middle; dominant-baseline: central; font-family: "Segoe UI Symbol", "Apple Symbols", "Noto Sans Symbols", var(--serif); }
+.wheel .w-sign { font-size: 15px; fill: currentColor; }
+.wheel .w-planet { font-size: 16px; fill: var(--ink); }
+.wheel .w-planet.lum { font-size: 18px; }
+.wheel .w-hnum { font: 9px var(--sans); fill: var(--ink-3); }
+.wheel .w-lbl { font: 600 10px var(--sans); fill: var(--west); }
+.ptable { width: 100%; border-collapse: collapse; font-size: 14.5px; font-variant-numeric: tabular-nums; }
+.ptable th { text-align: left; font-weight: 400; font-size: 12px; color: var(--ink-3); padding: 0 6px 6px 0; border-bottom: 1px solid var(--ink); }
+.ptable td { padding: 6px 6px 6px 0; border-bottom: 1px solid var(--rule); }
+.ptable .pg, .ptable .sg { font-family: "Segoe UI Symbol", "Apple Symbols", "Noto Sans Symbols", var(--serif); color: var(--west); }
+.ptable .pg { width: 22px; font-size: 16px; }
+.ptable .num { white-space: nowrap; color: var(--ink-2); }
+.ptable abbr { text-decoration: none; color: var(--east); }
+.sec-inner { margin-top: 26px; }
+.sec-inner.two { display: grid; gap: 28px; }
+@media (min-width: 760px) { .sec-inner.two { grid-template-columns: 1fr 1fr; gap: 48px; } }
+.readings li { font-size: 15px; line-height: 1.7; }
+.readings b { display: block; font: 600 14px/1.5 var(--serif); }
+.more-read summary { cursor: pointer; font-size: 14px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; margin-top: 10px; width: max-content; }
+.sky { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; color: var(--ink-2); }
+.sky span { white-space: nowrap; }
+.transits li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0 10px 12px; border-left: 2px solid var(--rule); border-bottom: 0; margin-bottom: 6px; }
+.transits li.good { border-left-color: var(--el-wood); }
+.transits li.hard { border-left-color: var(--east); }
+.transits li.strong { border-left-color: var(--west); }
+.transits .kicker { margin: 0; }

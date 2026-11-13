@@ -3,6 +3,9 @@ import { getToday, getEast, getWest, getDailyHexagram, getScore } from '../core/
 import { monthCalendar } from '../core/almanac.js';
 import { STEMS_KO, BRANCHES_KO, STEMS, BRANCHES, ELEMENTS, ELEMENTS_HANJA, STEM_ELEMENT, BRANCH_ELEMENT, tenGod, BRANCH_MAIN_STEM } from '../core/saju.js';
 import { TRIGRAMS } from '../data/iching.js';
+import { PLACES, j } from '../data/astrology.js';
+import { natalChart, readPlacement, dailyTransits } from '../core/natal.js';
+import { chartWheel } from './chart.js';
 import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
 import { glyph, roman, hexagramSvg } from './glyphs.js';
 
@@ -319,6 +322,8 @@ export function westView(profile) {
     </div>
   </section>
 
+  ${natalSection(profile)}
+
   <section class="sec">
     ${secHead('오늘의 달', 'Moon Transit')}
     <p class="kicker">달 · ${w.moon.moonSignName} ${Math.floor(w.moon.moonDegree)}° · 내 별자리와 ${w.moon.aspect.name}(${w.moon.aspect.tone}) · 제${w.moon.house}하우스</p>
@@ -326,6 +331,8 @@ export function westView(profile) {
     <p>${w.moon.houseInfo.text}</p>
     <p class="note">달은 약 2.5일마다 별자리를 옮깁니다. 오늘의 풀이는 정오의 달 위치를 기준으로 하루 동안 그대로 유지됩니다.</p>
   </section>
+
+  ${transitSection(profile)}
 
   <section class="sec two">
     <div>
@@ -400,7 +407,10 @@ export function meView(profile) {
 
     <label class="field"><span>태어난 시각</span><input name="time" type="time" value="${time}" ${p.year && !time ? 'disabled' : ''}></label>
     <label class="check"><input type="checkbox" name="noTime" ${p.year && !time ? 'checked' : ''}> 태어난 시각을 몰라요</label>
-    <p class="note">입력한 정보는 이 기기에만 저장되며 어디로도 전송되지 않습니다. 음력은 한국천문연구원 역서와 같은 규칙(한국 표준시 기준)으로 계산하며 1900~2100년을 지원합니다.</p>
+    <label class="field"><span>태어난 곳 <em>상승궁 계산에 쓰여요</em></span>
+      <select name="place">${PLACES.map(([n]) => `<option${(p.place || '서울') === n ? ' selected' : ''}>${n}</option>`).join('')}</select>
+    </label>
+    <p class="note">입력한 정보는 이 기기에만 저장되며 어디로도 전송되지 않습니다. 음력은 한국천문연구원 역서와 같은 규칙(한국 표준시 기준)으로 계산하며 1900~2100년을 지원합니다. 해외에서 태어났다면 가장 가까운 도시를 골라 주세요(시간대는 한국 기준).</p>
     <div class="row">
       <button class="btn" type="submit">저장</button>
       ${profile ? '<button class="btn ghost" type="button" id="clear">지우기</button>' : ''}
@@ -428,6 +438,7 @@ export function aboutView() {
         <li><b>오늘의 달</b> — 지금 달이 있는 별자리가 내 별자리에서 몇 번째 하우스인지 봅니다.</li>
         <li><b>수비학</b> — 피타고라스식 생명수와 개인일 수를 씁니다.</li>
         <li><b>타로</b> — 메이저 아르카나 22장을 씁니다.</li>
+        <li><b>점성술</b> — 태양·달·행성 10개의 위치를 궤도 계산(JPL 근사식)으로 구하고, 태어난 곳과 시각으로 상승궁과 하우스(홀 사인 방식)를 정합니다. 1987·1988년 서머타임은 보정합니다.</li>
       </ul></div>
   </section>
   <section class="sec"><p class="note">운세는 재미와 성찰을 위한 것입니다. 건강·투자·법률처럼 중요한 결정은 전문가와 상의하세요.</p></section>`;
@@ -557,5 +568,61 @@ export function scoreBlock(s) {
       </div>
       <p class="note">종합 점수는 동양과 서양 점수의 평균입니다. 모든 항목은 오늘의 일진·달의 위치·내 생년월일로 계산되며, 같은 날에는 바뀌지 않습니다.</p>
     </details>
+  </section>`;
+}
+
+/* ───────── 점성술: 출생 차트 ───────── */
+const ELEMENT_ORDER = ['불', '흙', '공기', '물'];
+const EL_CLS = { 불: 'el-fire', 흙: 'el-earth', 공기: 'el-air', 물: 'el-water' };
+const deg = (p) => `${Math.floor(p.degree)}°${String(Math.floor((p.degree % 1) * 60)).padStart(2, '0')}′`;
+
+function natalSection(profile) {
+  const n = natalChart(profile);
+  const rows = n.planets.concat(n.asc ? [n.asc] : []).map((p) => `<tr>
+      <td class="pg">${p.glyph}</td><td>${p.ko}</td>
+      <td><span class="sg">${p.signGlyph}</span> ${p.signName}</td>
+      <td class="num">${deg(p)}${p.retro ? ' <abbr title="역행">℞</abbr>' : ''}</td>
+      <td class="num">${p.house ? `${p.house}하우스` : p.key === 'asc' ? '' : '—'}</td></tr>`).join('');
+  const key = [n.planets[0], n.planets[1]].concat(n.asc ? [n.asc] : []);
+  const max = Math.max(...Object.values(n.elements), 1);
+  return `<section class="sec">
+    ${secHead('출생 차트', 'Natal Chart')}
+    <div class="natal">
+      <div class="natal-wheel">${chartWheel(n)}</div>
+      <div>
+        <table class="ptable"><thead><tr><th></th><th>천체</th><th>별자리</th><th>도</th><th>하우스</th></tr></thead><tbody>${rows}</tbody></table>
+        <p class="note">${n.hasTime ? `${n.place.name}에서 ${profile.hour}시 ${profile.minute || 0}분에 태어난 하늘입니다.${n.offset === 10 ? ' 서머타임 기간이라 한 시간을 보정했습니다.' : ''}` : '태어난 시각을 입력하면 상승궁과 하우스까지 볼 수 있어요.'}${n.moonUncertain ? ' 시각을 몰라 정오 기준으로 계산했는데, 그날 달이 별자리를 옮겼을 수 있어요.' : ''}</p>
+      </div>
+    </div>
+    <div class="sec-inner two">
+      <div>
+        <h3 class="headline sm">세 개의 열쇠</h3>
+        <ul class="plain readings">${key.map((p) => `<li><b>${p.ko} · ${p.signName}</b> ${readPlacement(p)}</li>`).join('')}</ul>
+        <details class="more-read"><summary>다른 행성 풀이 보기</summary>
+          <ul class="plain readings">${n.planets.slice(2).map((p) => `<li><b>${p.ko} · ${p.signName}${p.retro ? ' ℞' : ''}</b> ${readPlacement(p)}</li>`).join('')}</ul>
+        </details>
+      </div>
+      <div>
+        <h3 class="headline sm">원소 균형</h3>
+        <ul class="bars">${ELEMENT_ORDER.map((e) => `<li><span class="b-label ${EL_CLS[e]}">${e}</span><span class="b-track"><span class="b-fill ${EL_CLS[e]}" style="width:${(n.elements[e] / max) * 100}%"></span></span><span class="b-num">${n.elements[e]}</span></li>`).join('')}</ul>
+        <p>${n.summary}</p>
+        ${n.lackText ? `<p class="note">${n.lacking} 원소가 비어 있어요. ${j(n.lackText, '을', '를')} 챙기면 균형이 좋아집니다.</p>` : ''}
+      </div>
+    </div>
+  </section>`;
+}
+
+function transitSection(profile) {
+  const n = natalChart(profile);
+  const t = dailyTransits(n);
+  const merc = t.today.find((p) => p.key === 'mercury');
+  const sky = t.today.map((p) => `<span>${p.glyph} ${p.signName}${p.retro ? ' ℞' : ''}</span>`).join('');
+  return `<section class="sec">
+    ${secHead('오늘의 행성', 'Transits')}
+    <p class="sky">${sky}</p>
+    ${merc.retro ? '<p class="tip"><b>수성 역행 중</b> 연락·계약·이동은 한 번 더 확인하세요.</p>' : ''}
+    ${t.aspects.length ? `<ul class="plain transits">${t.aspects.map((a) => `<li class="${a.tone}"><span class="kicker">${a.label}</span>${a.text}</li>`).join('')}</ul>`
+    : '<p>오늘은 내 차트와 크게 부딪히거나 맞물리는 행성이 없는 조용한 날이에요.</p>'}
+    <p class="note">오늘 정오의 행성 위치가 태어날 때의 행성과 이루는 각입니다. 오차가 작은 순서로 보여 줍니다.</p>
   </section>`;
 }

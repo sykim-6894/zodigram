@@ -188,3 +188,38 @@ test('점수 한마디·조언: 1년 단위 안에서 겹치지 않고 분위기
   assert.equal(new Set(advice).size, 365);
   assert.ok(matched / 365 > 0.6, `분위기 일치 ${matched}/365`);
 });
+
+import { planetLongitude, angles, isRetrograde } from '../public/assets/js/core/planets.js';
+import { natalChart, dailyTransits, koreaBirthOffset } from '../public/assets/js/core/natal.js';
+import { julianDate as jdate } from '../public/assets/js/core/astro.js';
+
+test('행성 위치: J2000 기준값과 0.3° 이내, 목성-토성 대합, 수성 역행', () => {
+  const ref = { mercury: 271.9, venus: 241.6, mars: 327.9, jupiter: 25.25, saturn: 40.4, uranus: 314.8, neptune: 303.2, pluto: 251.45 };
+  for (const [k, v] of Object.entries(ref)) assert.ok(Math.abs(planetLongitude(k, 2451545.0) - v) < 0.3, k);
+  const gc = jdate(2020, 12, 21, 18, 0, 0);
+  assert.ok(Math.abs(planetLongitude('jupiter', gc) - planetLongitude('saturn', gc)) < 0.5);
+  assert.equal(isRetrograde('mercury', jdate(2024, 4, 10, 12, 0, 0)), true);
+  assert.equal(isRetrograde('mercury', jdate(2024, 5, 10, 12, 0, 0)), false);
+});
+
+test('상승궁: 서울 해 뜰 무렵 상승궁 ≈ 태양 황경, 정오 MC ≈ 태양', () => {
+  const sr = jdate(2026, 6, 21, 5, 11, 9);
+  assert.ok(Math.abs(angles(sr, 37.5665, 126.978).asc - planetLongitude('sun', sr)) < 2);
+  const noon = jdate(2026, 6, 21, 12, 33, 9);
+  assert.ok(Math.abs(angles(noon, 37.5665, 126.978).mc - planetLongitude('sun', noon)) < 1);
+});
+
+test('출생 차트: 하우스·원소·서머타임', () => {
+  const c = natalChart({ year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울' });
+  assert.equal(c.planets[0].signName, '황소자리');
+  assert.ok(c.asc && c.asc.sign >= 0);
+  assert.equal(c.planets[0].house, ((c.planets[0].sign - c.asc.sign + 12) % 12) + 1);
+  assert.equal(Object.values(c.elements).reduce((a, b) => a + b, 0), 8);
+  assert.equal(natalChart({ year: 1990, month: 5, day: 15 }).asc, null);
+  assert.equal(koreaBirthOffset(1988, 7, 1, 10, 0), 10);
+  assert.equal(koreaBirthOffset(1988, 11, 1, 10, 0), 9);
+  assert.equal(koreaBirthOffset(1960, 1, 1), 8.5);
+  const t = dailyTransits(c, new Date('2026-11-13T03:00:00Z'));
+  assert.ok(t.aspects.length <= 4 && t.today.length === 7);
+  for (let i = 1; i < t.aspects.length; i++) assert.ok(t.aspects[i - 1].orb <= t.aspects[i].orb);
+});
