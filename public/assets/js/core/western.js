@@ -1,11 +1,17 @@
 // 별자리(태양궁)·오늘의 달·수비학 계산.
 import { julianDate, sunLongitude, moonLongitude } from './astro.js';
+import { koreaUtcOffset } from './koreatime.js';
 import { SIGNS, HOUSES, ASPECTS, LIFE_PATH, PERSONAL_DAY, BIRTHSTONES } from '../data/western.js';
 
-/** 생일의 실제 태양 황경으로 별자리를 판정한다(경계일도 정확). */
+/**
+ * 생일의 실제 태양 황경으로 별자리를 판정한다(경계일도 정확).
+ * 태어난 시각은 그 시절의 한국 표준시와 서머타임을 반영해 실제 순간(UTC)으로 바꾼다.
+ */
 export function sunSign(b) {
   const hasTime = b.hour !== null && b.hour !== undefined && b.hour !== '';
-  const jd = julianDate(b.year, b.month, b.day, hasTime ? Number(b.hour) : 12, hasTime ? Number(b.minute || 0) : 0, 9);
+  const h = hasTime ? Number(b.hour) : 12;
+  const mi = hasTime ? Number(b.minute || 0) : 0;
+  const jd = julianDate(b.year, b.month, b.day, h, mi, koreaUtcOffset(b.year, b.month, b.day, h, mi).offset);
   const lon = sunLongitude(jd);
   const idx = Math.floor(lon / 30);
   const degree = lon - idx * 30;

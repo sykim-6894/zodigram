@@ -336,3 +336,24 @@ test('자미두수: 자미성 안성표와 명반 배치', () => {
   assert.equal(ziweiYear(c, 2026).palace.branch, 6);
   assert.equal(ziweiChart({ year: 1990, month: 5, day: 15 }), null);
 });
+
+import { sunSign as sunSign2 } from '../public/assets/js/core/western.js';
+
+test('서머타임·표준시 변천: 별자리·출생 차트·사주가 같은 순간을 쓴다', () => {
+  // 서머타임 기간의 별자리 경계일 출생(보정 전에는 별자리가 어긋났던 사례)
+  for (const p of [
+    { year: 1950, month: 5, day: 22, hour: 0, minute: 50 },
+    { year: 1955, month: 7, day: 24, hour: 0, minute: 50 },
+    { year: 1957, month: 6, day: 22, hour: 1, minute: 20 },
+    { year: 1959, month: 7, day: 24, hour: 0, minute: 10 },
+  ]) {
+    assert.equal(sunSign2(p).index, natalChart(p).planets[0].sign, JSON.stringify(p));
+    assert.equal(getWest(p).sign.index, natalChart(p).planets[0].sign);
+  }
+  // 1988 서머타임 자정 무렵: 메인(getEast)과 사주·만세력이 같은 네 기둥
+  const p = { year: 1988, month: 7, day: 1, hour: 0, minute: 20, place: '서울' };
+  const main = getEast(p).saju.pillars;
+  const manse = manseLookup({ calendar: 'solar', date: '1988-07-01', time: '00:20', place: '서울' }).saju.pillars;
+  for (const k of ['year', 'month', 'day', 'hour']) assert.equal(main[k].hanja, manse[k].hanja);
+  assert.equal(main.day.hanja, '丙辰'); // 전날
+});
