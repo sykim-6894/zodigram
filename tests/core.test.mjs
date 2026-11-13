@@ -308,3 +308,31 @@ test('기간 운세: 삼재·수성 역행·점수 범위', () => {
   assert.equal(q.months.map((m) => m.month).join(','), '10,11,12');
   assert.equal(q.east.score, Math.round(q.months.reduce((a, m) => a + m.east.score, 0) / 3));
 });
+
+import { ziweiPosition, ziweiChart, ziweiYear } from '../public/assets/js/core/ziwei.js';
+
+test('자미두수: 자미성 안성표와 명반 배치', () => {
+  const B = '子丑寅卯辰巳午未申酉戌亥';
+  const row = (n) => Array.from({ length: 10 }, (_, i) => B[ziweiPosition(i + 1, n)]).join('');
+  // 전통 안성표(1~10일)
+  assert.equal(row(2), '丑寅寅卯卯辰辰巳巳午');
+  assert.equal(row(3), '辰丑寅巳寅卯午卯辰未');
+  assert.equal(row(4), '亥辰丑寅子巳寅卯丑午');
+  assert.equal(row(5), '午亥辰丑寅未子巳寅卯');
+  assert.equal(row(6), '酉午亥辰丑寅戌未子巳');
+  const c = ziweiChart({ year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울' });
+  // 음력 1990-4-21 巳시, 庚午년 → 명궁 子, 신궁 戌
+  assert.equal(B[c.ming], '子');
+  assert.equal(B[c.shen], '戌');
+  // 14주성이 모두 한 번씩, 자미 寅이면 천부도 寅(紫府同宮)
+  assert.equal(c.palaces.reduce((a, p) => a + p.main.length, 0), 14);
+  assert.equal(B[c.positions.ziwei], '寅');
+  assert.equal(c.positions.tianfu, c.positions.ziwei);
+  // 庚년 사화: 태양 祿, 무곡 權, 태음 科, 천동 忌
+  assert.deepEqual(c.sihua.map((x) => x.star), ['taiyang', 'wuqu', 'taiyin', 'tiantong']);
+  // 열두 궁 이름이 모두 다르고 명궁에서 거꾸로 이어진다
+  assert.equal(new Set(c.palaces.map((p) => p.name)).size, 12);
+  assert.equal(c.palaces[(c.ming + 11) % 12].name, '형제궁');
+  assert.equal(ziweiYear(c, 2026).palace.branch, 6);
+  assert.equal(ziweiChart({ year: 1990, month: 5, day: 15 }), null);
+});

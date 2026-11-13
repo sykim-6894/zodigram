@@ -8,6 +8,8 @@ import { PLACES, j } from '../data/astrology.js';
 import { dstRanges } from '../core/koreatime.js';
 import { natalChart, readPlacement, dailyTransits } from '../core/natal.js';
 import { chartWheel } from './chart.js';
+import { ziweiChart, ziweiYear } from '../core/ziwei.js';
+import { STARS as ZW_STARS, PALACES as ZW_PALACES, SIHUA_TEXT as ZW_SIHUA } from '../data/ziwei-text.js';
 import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
 import { glyph, roman, hexagramSvg } from './glyphs.js';
 
@@ -110,9 +112,9 @@ export function homeView(profile) {
       </dl>
       <a class="more" href="#/west">서양 운세 전체 보기</a>`;
   } else {
-    eastBody = `<h3 class="headline">사주 · 띠 · 주역</h3>
+    eastBody = `<h3 class="headline">사주 · 띠 · 주역 · 자미두수</h3>
       <p class="lede">태어난 순간의 하늘과 땅의 기운을 여덟 글자로 읽고, 오늘의 일진과 견주어 봅니다.</p>${needProfile('east')}`;
-    westBody = `<h3 class="headline">별자리 · 타로 · 수비학</h3>
+    westBody = `<h3 class="headline">별자리 · 점성술 · 타로 · 수비학</h3>
       <p class="lede">태어난 날의 태양 자리와 오늘 달의 위치, 그리고 숫자와 카드로 하루를 읽습니다.</p>
       <a class="more" href="#/west/tarot">타로 세 장 바로 뽑기</a>`;
   }
@@ -184,7 +186,7 @@ function pillarCell(label, p, dayStem, isDay) {
 export function eastView(profile) {
   const today = getToday();
   if (!profile) {
-    return `${dateline(today)}<div class="page-head east">${sideLabel('east')}<h1>사주 · 띠 · 주역</h1></div>${needProfile('east')}
+    return `${dateline(today)}<div class="page-head east">${sideLabel('east')}<h1>사주 · 띠 · 주역 · 동양 점성술</h1></div>${needProfile('east')}
       <section class="sec">${secHead('주역 점', '周易')}<p>생년월일 없이도 동전을 던져 괘를 얻을 수 있습니다.</p><a class="btn" href="#/east/iching">주역 점 보기</a></section>`;
   }
   const e = getEast(profile);
@@ -194,7 +196,7 @@ export function eastView(profile) {
   const hex = getDailyHexagram(profile);
 
   return `${dateline(today)}
-  <div class="page-head east">${sideLabel('east')}<h1>${profile.name ? esc(profile.name) + ' 님의 ' : ''}사주</h1></div>
+  <div class="page-head east">${sideLabel('east')}<h1>${profile.name ? esc(profile.name) + ' 님의 ' : ''}동양 운세</h1></div>
 
   <section class="sec">
     ${secHead('사주 원국', '四柱八字')}
@@ -250,7 +252,9 @@ export function eastView(profile) {
         <a class="more" href="#/east/iching">마음에 둔 질문으로 직접 점치기</a>
       </div>
     </div>
-  </section>`;
+  </section>
+
+  ${ziweiSection(profile)}`;
 }
 
 /* ───────── 주역 점 ───────── */
@@ -314,12 +318,12 @@ export function tarotReading(card, reversed) {
 export function westView(profile) {
   const today = getToday();
   if (!profile) {
-    return `${dateline(today)}<div class="page-head west">${sideLabel('west')}<h1>별자리 · 타로 · 수비학</h1></div>${needProfile('west')}
+    return `${dateline(today)}<div class="page-head west">${sideLabel('west')}<h1>별자리 · 서양 점성술 · 타로 · 수비학</h1></div>${needProfile('west')}
       <section class="sec">${secHead('타로', 'XXII')}<p>생년월일 없이도 카드를 뽑을 수 있습니다.</p><a class="btn west" href="#/west/tarot">타로 세 장 뽑기</a></section>`;
   }
   const w = getWest(profile);
   return `${dateline(today)}
-  <div class="page-head west">${sideLabel('west')}<h1>${profile.name ? esc(profile.name) + ' 님의 ' : ''}별자리</h1></div>
+  <div class="page-head west">${sideLabel('west')}<h1>${profile.name ? esc(profile.name) + ' 님의 ' : ''}서양 운세</h1></div>
 
   <section class="sec two">
     <div class="sign-block">
@@ -450,6 +454,7 @@ export function aboutView() {
         <li><b>일진</b> — 오늘의 천간이 내 일간에게 어떤 십신인지로 하루의 성격을 봅니다.</li>
         <li><b>띠</b> — 오늘의 지지와 내 띠의 합·충·해 관계를 봅니다.</li>
         <li><b>주역</b> — 동전 세 개를 여섯 번 던지는 척전법을 씁니다.</li>
+        <li><b>동양 점성술(자미두수)</b> — 음력 생년·생월·생일과 시진으로 명궁·신궁과 오행국을 정하고, 열두 궁에 14주성·보좌성·사화를 배치합니다.</li>
       </ul></div>
     <div>${secHead('서양', '西')}
       <ul class="plain">
@@ -457,7 +462,7 @@ export function aboutView() {
         <li><b>오늘의 달</b> — 지금 달이 있는 별자리가 내 별자리에서 몇 번째 하우스인지 봅니다.</li>
         <li><b>수비학</b> — 피타고라스식 생명수와 개인일 수를 씁니다.</li>
         <li><b>타로</b> — 메이저 아르카나 22장을 씁니다.</li>
-        <li><b>점성술</b> — 태양·달·행성 10개의 위치를 궤도 계산(JPL 근사식)으로 구하고, 태어난 곳과 시각으로 상승궁과 하우스(홀 사인 방식)를 정합니다. 1987·1988년 서머타임은 보정합니다.</li>
+        <li><b>서양 점성술</b> — 태양·달·행성 10개의 위치를 궤도 계산(JPL 근사식)으로 구하고, 태어난 곳과 시각으로 상승궁과 하우스(홀 사인 방식)를 정합니다. 한국의 표준시 변천과 서머타임을 보정합니다.</li>
       </ul></div>
   </section>
   <section class="sec"><p class="note">운세는 재미와 성찰을 위한 것입니다. 건강·투자·법률처럼 중요한 결정은 전문가와 상의하세요.</p></section>`;
@@ -606,7 +611,8 @@ function natalSection(profile) {
   const key = [n.planets[0], n.planets[1]].concat(n.asc ? [n.asc] : []);
   const max = Math.max(...Object.values(n.elements), 1);
   return `<section class="sec">
-    ${secHead('출생 차트', '☉︎ ☽︎ ☿︎ ♀︎ ♂︎')}
+    ${secHead('서양 점성술', '☉︎ ☽︎ ☿︎ ♀︎ ♂︎')}
+    <p class=\"kicker\">출생 차트 · 태어난 순간의 하늘</p>
     <div class="natal">
       <div class="natal-wheel">${chartWheel(n)}</div>
       <div>
@@ -820,4 +826,77 @@ export function periodView(kind, profile, r) {
   <p class="period-title">${r.title}</p>
   ${periodScore(r)}
   ${cols}`;
+}
+
+/* ───────── 동양 점성술: 자미두수 명반 ───────── */
+// 명반 판의 칸 위치(행, 열): 巳午未申 / 辰 · · 酉 / 卯 · · 戌 / 寅丑子亥
+const ZW_GRID = { 5: [1, 1], 6: [1, 2], 7: [1, 3], 8: [1, 4], 4: [2, 1], 9: [2, 4], 3: [3, 1], 10: [3, 4], 2: [4, 1], 1: [4, 2], 0: [4, 3], 11: [4, 4] };
+const SIHUA_MARK = { 화록: '祿', 화권: '權', 화과: '科', 화기: '忌' };
+
+function zwStarName(key) { return ZW_STARS[key].ko; }
+function zwStarsText(list) { return list.map((k) => `${ZW_STARS[k].ko}(${ZW_STARS[k].key})`).join(' · '); }
+
+function zwCell(p) {
+  const [r, c] = ZW_GRID[p.branch];
+  const tag = (star) => p.sihua.filter((x) => x.star === star).map((x) => `<i class="zw-hua${x.name === '화기' ? ' ji' : ''}">${SIHUA_MARK[x.name]}</i>`).join('');
+  return `<div class="zw-cell${p.order === 0 ? ' ming' : ''}" style="grid-area:${r} / ${c}">
+    <div class="zw-main">${p.main.map((s) => `<span>${zwStarName(s)}${tag(s)}</span>`).join('') || '<span class="zw-empty">—</span>'}</div>
+    <div class="zw-aux">${p.aux.map((s) => `<span class="${ZW_STARS[s].aux}">${zwStarName(s)}${tag(s)}</span>`).join('')}</div>
+    <div class="zw-foot"><span class="zw-name">${p.name}${p.isShen ? '<em>身</em>' : ''}</span><span class="zw-gz">${p.gz}</span></div>
+  </div>`;
+}
+
+function ziweiSection(profile) {
+  const c = ziweiChart(profile);
+  if (!c) {
+    return `<section class="sec">${secHead('동양 점성술', '紫微斗數')}
+      <p>자미두수는 태어난 시진(時辰)으로 명반을 만듭니다. <a href="#/me">태어난 시각을 입력</a>하면 열두 궁에 별을 배치해 보여 드려요.</p></section>`;
+  }
+  const P = (i) => c.palaces.find((p) => p.order === i);
+  const ming = P(0);
+  const borrowed = !ming.main.length;
+  const mingStars = borrowed ? P(6).main : ming.main;
+  const shen = c.palaces[c.shen];
+  const nowYear = getToday().date.year;
+  const yr = ziweiYear(c, nowYear);
+  const hourName = BRANCHES[c.hourBranch];
+  const lunarText = `음력 ${c.lunar.year}년 ${c.lunar.leap ? '윤' : ''}${c.lunar.month}월 ${c.lunar.day}일 ${hourName}시`;
+  const keyPalaces = [4, 8, 2].map(P); // 재백 · 관록 · 부처
+
+  return `<section class="sec">
+    ${secHead('동양 점성술', '紫微斗數')}
+    <p class="kicker">자미두수 명반 · ${lunarText}</p>
+    <div class="zw-board" role="img" aria-label="자미두수 명반">
+      ${c.palaces.map(zwCell).join('')}
+      <div class="zw-center">
+        <p class="zw-title">紫微斗數</p>
+        <p>${lunarText}</p>
+        <p>${c.yearPillar.hanja}년 · ${c.bureau.name}</p>
+        <p>명궁 ${BRANCHES[c.ming]} · 신궁 ${BRANCHES[c.shen]}</p>
+      </div>
+    </div>
+    <p class="note">주홍 칸이 명궁, 身은 신궁입니다. 祿·權·科·忌는 태어난 해의 사화(四化)입니다.</p>
+
+    <div class="sec-inner two">
+      <div>
+        <h3 class="headline sm">명궁의 별 — ${mingStars.map((k) => `${ZW_STARS[k].ko}(${ZW_STARS[k].hanja})`).join('·')}</h3>
+        ${borrowed ? '<p class="note">명궁에 주성이 없어 마주한 천이궁의 별을 빌려 봅니다.</p>' : ''}
+        ${mingStars.map((k) => `<p><b>${ZW_STARS[k].ko} · ${ZW_STARS[k].key}</b> ${ZW_STARS[k].text}</p>`).join('')}
+        <p>신궁은 <b>${shen.name}(${ZW_PALACES[shen.name]})</b>에 있어, 살아가며 이 영역에 마음이 많이 쓰입니다.</p>
+      </div>
+      <div>
+        <h3 class="headline sm">주요 궁과 사화</h3>
+        <ul class="plain readings">
+          ${keyPalaces.map((p) => `<li><b>${p.name} · ${ZW_PALACES[p.name]}</b>${p.main.length ? zwStarsText(p.main) : '주성 없음(마주한 궁의 영향을 받음)'}</li>`).join('')}
+          ${c.sihua.map((x) => `<li><b>${x.name} · ${ZW_STARS[x.star].ko}</b>${c.palaces[x.branch].name}(${ZW_PALACES[c.palaces[x.branch].name]})이 ${ZW_SIHUA[x.name]}입니다.</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-inner">
+      <h3 class="headline sm">${nowYear}년의 자미두수 — ${yr.pillar.hanja}년 유년</h3>
+      <p>올해의 명궁은 <b>${yr.palace.name}(${ZW_PALACES[yr.palace.name]})</b>입니다. ${yr.palace.main.length ? `${zwStarsText(yr.palace.main)}의 기운으로 한 해를 보냅니다.` : '주성이 없는 궁이라 마주한 궁의 흐름을 함께 봅니다.'}
+      올해의 화기는 ${ZW_STARS[yr.sihua[3].star].ko}${yr.sihua[3].branch !== undefined ? `(${c.palaces[yr.sihua[3].branch].name})` : ''}, 화록은 ${ZW_STARS[yr.sihua[0].star].ko}${yr.sihua[0].branch !== undefined ? `(${c.palaces[yr.sihua[0].branch].name})` : ''}에 듭니다.</p>
+    </div>
+  </section>`;
 }
