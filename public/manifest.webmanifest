@@ -1,0 +1,14 @@
+{
+  "name": "별과 괘 — 동양과 서양의 오늘",
+  "short_name": "별과 괘",
+  "description": "사주·띠·주역, 별자리·타로·수비학으로 읽는 오늘",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F0E8",
+  "theme_color": "#F4F0E8",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
