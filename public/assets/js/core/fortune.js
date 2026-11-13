@@ -3,6 +3,7 @@ import { todayKst, dateKey, julianDate, moonPhase } from './astro.js';
 import { computeSaju, dailySaju, dayPillar, ANIMALS, STEM_ELEMENT } from './saju.js';
 import { sunSign, dailyMoon, lifePath, personalDay, birthstone } from './western.js';
 import { rng, pick } from './seed.js';
+import { solarToLunar } from './lunar.js';
 import { MAJOR_ARCANA } from '../data/tarot.js';
 import { HEXAGRAMS } from '../data/iching.js';
 import { EAST_QUOTES, WEST_QUOTES } from '../data/quotes.js';
@@ -21,6 +22,7 @@ export function getToday(now = new Date()) {
     key,
     weekday: ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(t.year, t.month - 1, t.day)).getUTCDay()],
     pillar: dayPillar(t.year, t.month, t.day),
+    lunar: solarToLunar(t.year, t.month, t.day),
     moon: moonPhase(jdNow),
     eastQuote: pick(EAST_QUOTES, r),
     westQuote: pick(WEST_QUOTES, r),

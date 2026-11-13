@@ -9,6 +9,16 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 
 const EL_CLASS = ['el-wood', 'el-fire', 'el-earth', 'el-metal', 'el-water'];
 
+/** 사주·별자리 화면에 쓰는 생일 표기. 음력으로 입력했으면 양력을 괄호로 함께 보여 준다. */
+function birthLabel(p) {
+  const solar = `양력 ${p.year}년 ${p.month}월 ${p.day}일`;
+  if (p.calendar === 'lunar' && p.lunar) {
+    const l = p.lunar;
+    return `음력 ${l.year}년 ${l.leap ? '윤' : ''}${l.month}월 ${l.day}일(${solar})`;
+  }
+  return solar;
+}
+
 const secHead = (title, sub = '') => `<h2 class="sec-h"><span>${title}</span>${sub ? `<small>${sub}</small>` : ''}</h2>`;
 
 const sideLabel = (side) => side === 'east'
@@ -25,7 +35,7 @@ function needProfile(side) {
 export function dateline(today) {
   const t = today.date;
   return `<div class="dateline">
-    <span>${t.year}. ${t.month}. ${t.day}. ${today.weekday}요일</span>
+    <span>${t.year}. ${t.month}. ${t.day}. ${today.weekday}요일 <i class="lunar">음력 ${today.lunar.leap ? "윤" : ""}${today.lunar.month}. ${today.lunar.day}.</i></span>
     <span class="hanja" title="오늘의 일진">${today.pillar.hanja}일 <i>${today.pillar.hangul}</i></span>
     <span>${moonIcon(today.moon)} ${today.moon.name} ${Math.round(today.moon.illumination * 100)}%</span>
   </div>`;
@@ -155,7 +165,7 @@ export function eastView(profile) {
       ${pillarCell('월주', pillars.month, ds)}
       ${pillarCell('연주', pillars.year, ds)}
     </div>
-    <p class="note">양력 ${profile.year}년 ${profile.month}월 ${profile.day}일${e.saju.hasTime ? ` ${profile.hour}시 ${profile.minute || 0}분` : ''} 기준. 시주는 한국 표준시에서 30분을 보정한 진태양시로 계산했습니다.</p>
+    <p class="note">${birthLabel(profile)}${e.saju.hasTime ? ` ${profile.hour}시 ${profile.minute || 0}분` : ''} 기준. 시주는 한국 표준시에서 30분을 보정한 진태양시로 계산했습니다.</p>
   </section>
 
   <section class="sec two">
@@ -343,13 +353,36 @@ export function meView(profile) {
   const p = profile || {};
   const date = p.year ? `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}` : '';
   const time = p.hour !== undefined && p.hour !== null && p.hour !== '' ? `${String(p.hour).padStart(2, '0')}:${String(p.minute || 0).padStart(2, '0')}` : '';
+  const isLunar = p.calendar === 'lunar' && p.lunar;
+  const l = p.lunar || {};
+  const opts = (n, sel) => Array.from({ length: n }, (_, i) => `<option value="${i + 1}"${sel === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('');
   return `<div class="page-head"><h1>내 정보</h1></div>
-  <form class="form" id="profileForm" autocomplete="off">
+  <form class="form" id="profileForm" autocomplete="off" novalidate>
     <label class="field"><span>이름 또는 별명 <em>선택</em></span><input name="name" maxlength="20" value="${esc(p.name || '')}"></label>
-    <label class="field"><span>생년월일 <em>양력</em></span><input name="date" type="date" required min="1900-01-01" max="2100-12-31" value="${date}"></label>
+
+    <fieldset class="field">
+      <legend>생년월일</legend>
+      <div class="seg" role="radiogroup" aria-label="달력 종류">
+        <label><input type="radio" name="calendar" value="solar" ${isLunar ? '' : 'checked'}><span>양력</span></label>
+        <label><input type="radio" name="calendar" value="lunar" ${isLunar ? 'checked' : ''}><span>음력</span></label>
+      </div>
+      <div data-cal="solar" ${isLunar ? 'hidden' : ''}>
+        <input name="date" type="date" min="1900-01-01" max="2100-12-31" value="${isLunar ? '' : date}" aria-label="양력 생년월일">
+      </div>
+      <div data-cal="lunar" ${isLunar ? '' : 'hidden'}>
+        <div class="ymd">
+          <label><input name="ly" type="number" aria-label="음력 연도" inputmode="numeric" min="1900" max="2100" placeholder="1990" value="${l.year || ''}"><span>년</span></label>
+          <label><select name="lm" aria-label="음력 월"><option value="">월</option>${opts(12, l.month)}</select><span>월</span></label>
+          <label><select name="ld" aria-label="음력 일"><option value="">일</option>${opts(30, l.day)}</select><span>일</span></label>
+        </div>
+        <label class="check"><input type="checkbox" name="leap" ${l.leap ? 'checked' : ''}> 윤달</label>
+      </div>
+      <p class="conv" id="conv" aria-live="polite"></p>
+    </fieldset>
+
     <label class="field"><span>태어난 시각</span><input name="time" type="time" value="${time}" ${p.year && !time ? 'disabled' : ''}></label>
     <label class="check"><input type="checkbox" name="noTime" ${p.year && !time ? 'checked' : ''}> 태어난 시각을 몰라요</label>
-    <p class="note">입력한 정보는 이 기기에만 저장되며 어디로도 전송되지 않습니다. 음력 생일은 아직 지원하지 않으니 양력으로 바꿔서 입력해 주세요.</p>
+    <p class="note">입력한 정보는 이 기기에만 저장되며 어디로도 전송되지 않습니다. 음력은 한국천문연구원 역서와 같은 규칙(한국 표준시 기준)으로 계산하며 1900~2100년을 지원합니다.</p>
     <div class="row">
       <button class="btn" type="submit">저장</button>
       ${profile ? '<button class="btn ghost" type="button" id="clear">지우기</button>' : ''}

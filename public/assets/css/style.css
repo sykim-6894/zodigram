@@ -354,3 +354,31 @@ button { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ── 생년월일: 양력/음력 ── */
+fieldset.field { border: 0; padding: 0; margin: 0 0 18px; min-width: 0; }
+fieldset.field legend { padding: 0; font-size: 13.5px; color: var(--ink-2); margin-bottom: 6px; }
+.seg { display: inline-grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--ink); margin-bottom: 10px; }
+.seg label { position: relative; cursor: pointer; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: block; padding: 7px 22px; font-size: 14px; }
+.seg label + label span { border-left: 1px solid var(--ink); }
+.seg input:checked + span { background: var(--ink); color: var(--paper); }
+.seg input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
+[data-cal][hidden] { display: none; }
+[data-cal="solar"] input {
+  width: 100%; height: 46px; padding: 0 12px; font: 16px var(--sans); color: var(--ink);
+  background: transparent; border: 1px solid var(--rule); border-bottom-color: var(--ink-2); border-radius: 0;
+}
+.ymd { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.ymd label { display: flex; align-items: center; gap: 6px; }
+.ymd label > span { font-size: 14px; color: var(--ink-2); flex: none; }
+.ymd input, .ymd select {
+  width: 100%; min-width: 0; height: 46px; padding: 0 8px; font: 16px var(--sans); color: var(--ink);
+  background: transparent; border: 1px solid var(--rule); border-bottom-color: var(--ink-2); border-radius: 0;
+}
+.ymd select option { background: var(--paper); color: var(--ink); }
+[data-cal] .check { margin: 0 0 4px; }
+.conv { min-height: 1.6em; margin: 8px 0 0; font: 400 14.5px/1.6 var(--serif); color: var(--ink-2); }
+.conv.err { color: var(--east); font-family: var(--sans); font-size: 13.5px; }
+.dateline .lunar { font-style: normal; color: var(--ink-3); margin-left: 6px; }

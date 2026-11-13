@@ -1,10 +1,10 @@
 // 오프라인 지원: 앱 셸은 미리 캐시, 나머지는 네트워크 우선.
-const VERSION = 'zodigram-v1';
+const VERSION = 'zodigram-v2';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'icons/icon.svg', 'assets/css/style.css',
   'assets/js/app.js', 'assets/js/ui/views.js', 'assets/js/ui/glyphs.js',
   'assets/js/core/astro.js', 'assets/js/core/saju.js', 'assets/js/core/western.js', 'assets/js/core/iching.js',
-  'assets/js/core/fortune.js', 'assets/js/core/seed.js', 'assets/js/core/storage.js',
+  'assets/js/core/fortune.js', 'assets/js/core/seed.js', 'assets/js/core/storage.js', 'assets/js/core/lunar.js',
   'assets/js/data/iching.js', 'assets/js/data/tarot.js', 'assets/js/data/western.js',
   'assets/js/data/quotes.js', 'assets/js/data/saju-text.js',
 ];

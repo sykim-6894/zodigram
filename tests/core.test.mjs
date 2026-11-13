@@ -67,3 +67,27 @@ test('운세 API는 같은 날 같은 결과', () => {
   assert.ok(getEast(p, now).daily.title);
   assert.equal(getToday(now).pillar.hanja, '辛卯');
 });
+
+import { lunarToSolar, solarToLunar, leapMonthOf } from '../public/assets/js/core/lunar.js';
+
+test('음력: 설날·추석·윤달 (한국천문연구원 발표값)', () => {
+  const seol = { 1900: '1-31', 1970: '2-6', 1990: '1-27', 2000: '2-5', 2012: '1-23', 2020: '1-25', 2023: '1-22', 2024: '2-10', 2025: '1-29', 2026: '2-17', 2027: '2-7', 2030: '2-3' };
+  for (const [y, v] of Object.entries(seol)) {
+    const r = lunarToSolar(+y, 1, 1);
+    assert.equal(`${r.month}-${r.day}`, v, `${y} 설날`);
+  }
+  const c = lunarToSolar(2025, 8, 15);
+  assert.equal(`${c.month}-${c.day}`, '10-6');
+  const leaps = { 1990: 5, 2012: 3, 2020: 4, 2023: 2, 2025: 6, 2028: 5, 2033: 11 };
+  for (const [y, v] of Object.entries(leaps)) assert.equal(leapMonthOf(+y), v, `${y} 윤달`);
+});
+
+test('음력: 왕복 변환과 잘못된 날짜', () => {
+  assert.deepEqual(solarToLunar(2026, 11, 13), { year: 2026, month: 10, day: 5, leap: false, monthDays: 30 });
+  const s = lunarToSolar(2025, 6, 10, true);
+  const back = solarToLunar(s.year, s.month, s.day);
+  assert.equal(back.leap, true);
+  assert.equal(back.month, 6);
+  assert.ok(lunarToSolar(2026, 6, 1, true).error);
+  assert.ok(lunarToSolar(1899, 1, 1).error);
+});

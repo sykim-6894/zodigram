@@ -2,6 +2,7 @@
 import { loadProfile, saveProfile, clearProfile } from './core/storage.js';
 import { tossLine, readCast } from './core/iching.js';
 import { trueRandom, shuffle } from './core/seed.js';
+import { lunarToSolar, solarToLunar, formatLunar, LUNAR_MIN_YEAR, LUNAR_MAX_YEAR } from './core/lunar.js';
 import { MAJOR_ARCANA, SPREAD_POSITIONS } from './data/tarot.js';
 import { hexagramSvg, coinSvg } from './ui/glyphs.js';
 import * as V from './ui/views.js';
@@ -51,15 +52,61 @@ function bindProfileForm() {
     form.elements.time.disabled = noTime.checked;
     if (noTime.checked) form.elements.time.value = '';
   });
+  const conv = document.getElementById('conv');
+  const el = form.elements;
+
+  // 입력값 → {solar, lunar, calendar} 또는 {error}
+  const readBirth = () => {
+    const calendar = el.calendar.value;
+    if (calendar === 'lunar') {
+      const ly = Number(el.ly.value), lm = Number(el.lm.value), ld = Number(el.ld.value);
+      if (!ly || !lm || !ld) return { empty: true };
+      const s = lunarToSolar(ly, lm, ld, el.leap.checked);
+      if (s.error) return { error: s.error };
+      return { calendar, solar: s, lunar: { year: ly, month: lm, day: ld, leap: el.leap.checked } };
+    }
+    const [y, m, d] = el.date.value.split('-').map(Number);
+    if (!y || !m || !d) return { empty: true };
+    if (y < LUNAR_MIN_YEAR || y > LUNAR_MAX_YEAR) return { error: '1900~2100년 사이로 입력해 주세요.' };
+    return { calendar, solar: { year: y, month: m, day: d }, lunar: solarToLunar(y, m, d) };
+  };
+
+  const updateConv = () => {
+    const isLunar = el.calendar.value === 'lunar';
+    form.querySelector('[data-cal="solar"]').hidden = isLunar;
+    form.querySelector('[data-cal="lunar"]').hidden = !isLunar;
+    const b = readBirth();
+    conv.classList.toggle('err', !!b.error);
+    if (b.error) conv.textContent = b.error;
+    else if (b.empty) conv.textContent = '';
+    else {
+      const s = b.solar;
+      conv.textContent = isLunar
+        ? `양력으로 ${s.year}년 ${s.month}월 ${s.day}일입니다.`
+        : `${formatLunar(b.lunar)}입니다.`;
+    }
+    return b;
+  };
+  form.addEventListener('input', updateConv);
+  form.addEventListener('change', updateConv);
+  updateConv();
+
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
-    const [y, m, d] = form.elements.date.value.split('-').map(Number);
-    if (!y || !m || !d) return;
+    const b = updateConv();
+    if (b.empty) { conv.classList.add('err'); conv.textContent = '생년월일을 입력해 주세요.'; return; }
+    if (b.error) return;
     let hour = null, minute = null;
-    if (!noTime.checked && form.elements.time.value) {
-      [hour, minute] = form.elements.time.value.split(':').map(Number);
+    if (!noTime.checked && el.time.value) {
+      [hour, minute] = el.time.value.split(':').map(Number);
     }
-    saveProfile({ name: form.elements.name.value.trim(), year: y, month: m, day: d, hour, minute });
+    saveProfile({
+      name: el.name.value.trim(),
+      calendar: b.calendar,
+      lunar: b.calendar === 'lunar' ? b.lunar : null,
+      year: b.solar.year, month: b.solar.month, day: b.solar.day,
+      hour, minute,
+    });
     location.hash = '#/';
   });
   document.getElementById('clear')?.addEventListener('click', () => {

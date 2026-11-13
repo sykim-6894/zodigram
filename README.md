@@ -54,9 +54,11 @@ wrangler.jsonc          ← Cloudflare Workers 배포 설정
 1. GitHub에 새 저장소를 만들고 push 합니다.
 2. 저장소 **Settings → Pages → Source** 를 **GitHub Actions** 로 바꿉니다.
 3. `main` 에 push 할 때마다 테스트 후 `public/` 이 배포됩니다.
-   주소: `https://<계정>.github.io/<저장소>/` (해시 라우팅이라 하위 경로에서도 동작)
+   주소: `https://sykim-6894.github.io/zodigram/` (해시 라우팅이라 하위 경로에서도 동작)
 
 ### 2) Cloudflare 연결 (둘 중 하나)
+현재 배포 주소: **https://zodigram.ksy2202.workers.dev** (Cloudflare Workers, `main`에 push하면 자동 배포)
+
 - **Cloudflare Pages (Git 연결)** — Workers & Pages → Create → Pages → Connect to Git → 저장소 선택
   - Framework preset: `None`
   - Build command: *(비워 둠)*
@@ -87,5 +89,6 @@ wrangler.jsonc          ← Cloudflare Workers 배포 설정
 ## 계산 기준과 한계
 - 사주: 연주는 입춘, 월주는 12절(태양 황경), 일주는 율리우스일(2000-01-01 = 戊午). 시주는 한국 표준시에서 30분 보정(자시 23:30~01:30), 23:30 이후 출생은 다음 날 일주로 봅니다.
 - 태양 황경 오차 약 ±0.01°(절기 시각 수 분), 달 황경 약 ±0.3°.
-- 아직 **음력 생일 입력**, 한국의 과거 서머타임(1948–1988 일부 연도) 보정, 대운·세운은 지원하지 않습니다.
+- 음력: 합삭(Meeus)과 중기로 직접 계산하며, 동지가 든 달을 11월로 두고 중기 없는 첫 달을 윤달로 봅니다. 1900~2100년 전 기간을 양력↔음력 왕복 검증했습니다.
+- 아직 한국의 과거 서머타임(1948–1988 일부 연도) 보정, 대운·세운은 지원하지 않습니다.
 - 해석 문구와 한마디 번역은 이 프로젝트를 위해 새로 썼고, 인용은 저작권이 끝난 고전·속담만 사용했습니다.
