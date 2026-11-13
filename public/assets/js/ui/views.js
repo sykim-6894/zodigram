@@ -98,7 +98,7 @@ export function homeView(profile) {
         <div><dt>${e.animal.name}띠</dt><dd>${e.animal.today.title}</dd></div>
         <div><dt>보완 색</dt><dd>${e.complement.color}</dd></div>
       </dl>
-      <a class="more" href="#/east">사주 풀이 전체 보기</a>`;
+      <a class="more" href="#/east">동양 운세 전체 보기</a>`;
     westBody = `
       <p class="kicker">달이 ${w.moon.moonSignName}에 · 제${w.moon.house}하우스</p>
       <h3 class="headline">${w.moon.houseInfo.area}에 빛이 듭니다</h3>
@@ -108,7 +108,7 @@ export function homeView(profile) {
         <div><dt>개인일 수</dt><dd>${w.personalDay.number}</dd></div>
         <div><dt>오늘의 카드</dt><dd>${w.tarot.card.ko}${w.tarot.reversed ? ' (역)' : ''}</dd></div>
       </dl>
-      <a class="more" href="#/west">별자리 풀이 전체 보기</a>`;
+      <a class="more" href="#/west">서양 운세 전체 보기</a>`;
   } else {
     eastBody = `<h3 class="headline">사주 · 띠 · 주역</h3>
       <p class="lede">태어난 순간의 하늘과 땅의 기운을 여덟 글자로 읽고, 오늘의 일진과 견주어 봅니다.</p>${needProfile('east')}`;
