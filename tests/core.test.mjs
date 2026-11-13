@@ -264,3 +264,19 @@ test('만세력 조회: 입춘 직전·직후, 음력 입력, 절기 구간', ()
   assert.equal(n.term.to.name, '대설');
   assert.ok(manseLookup({ calendar: 'lunar', ly: 2026, lm: 6, ld: 1, leap: true }).error);
 });
+
+import { westScore, transitDelta } from '../public/assets/js/core/score.js';
+
+test('서양 점수: 행성 각 항목 포함, 어떤 조합도 50~100', () => {
+  const p = { year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울' };
+  const w = getWest(p, new Date('2026-11-13T03:00:00Z'));
+  assert.ok(w.transits && Array.isArray(w.transits.aspects));
+  const s = westScore(w);
+  assert.ok(s.items.some((i) => i.label === '오늘의 행성 각'));
+  assert.equal(transitDelta([]), 0);
+  assert.equal(transitDelta([{ tone: 'good' }, { tone: 'good' }, { tone: 'good' }]), 6);
+  assert.equal(transitDelta([{ tone: 'hard' }, { tone: 'hard' }, { tone: 'hard' }]), -5);
+  // 장소가 바뀌면 다른 사람으로 계산(캐시 분리), 같은 사람·같은 날의 카드는 그대로
+  const busan = getWest({ ...p, place: '부산' }, new Date('2026-11-13T03:00:00Z'));
+  assert.deepEqual(busan.tarot, w.tarot);
+});

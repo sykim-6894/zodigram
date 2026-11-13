@@ -2,6 +2,7 @@
 import { todayKst, dateKey, julianDate, moonPhase, jdn } from './astro.js';
 import { computeSaju, dailySaju, dayPillar, ANIMALS, STEM_ELEMENT } from './saju.js';
 import { sunSign, dailyMoon, lifePath, personalDay, birthstone } from './western.js';
+import { natalChart, dailyTransits } from './natal.js';
 import { rng, pick } from './seed.js';
 import { solarToLunar } from './lunar.js';
 import { MAJOR_ARCANA } from '../data/tarot.js';
@@ -11,7 +12,16 @@ import { totalScore } from './score.js';
 import { OPENERS, ACTIONS } from '../data/advice.js';
 import { DAY_MASTER, TEN_GOD_DAY, RELATION_TEXT, ELEMENT_INFO, ZODIAC_ANIMAL_DAY, ANIMAL_TRAIT } from '../data/saju-text.js';
 
-const birthKey = (p) => `${p.year}-${p.month}-${p.day}-${p.hour ?? 'x'}`;
+// 오늘의 카드·괘를 고르는 씨앗(기존 사용자의 결과가 바뀌지 않도록 형식 유지)
+const seedKey = (p) => `${p.year}-${p.month}-${p.day}-${p.hour ?? 'x'}`;
+// 생년월일·시각·장소가 하나라도 바뀌면 다른 사람으로 보고 캐시를 따로 쓴다
+const birthKey = (p) => `${p.year}-${p.month}-${p.day}-${p.hour ?? 'x'}:${p.minute ?? 0}@${p.place || '서울'}`;
+const natalCache = new Map();
+function natalOf(profile) {
+  const k = birthKey(profile);
+  if (!natalCache.has(k)) natalCache.set(k, natalChart(profile));
+  return natalCache.get(k);
+}
 
 /** 누구에게나 같은 오늘의 공통 정보 */
 export function getToday(now = new Date()) {
@@ -56,7 +66,7 @@ export function getEast(profile, now = new Date()) {
 
 /** 오늘의 괘: 하루 동안 고정. 직접 던지는 점은 core/iching.js 사용 */
 export function getDailyHexagram(profile, now = new Date()) {
-  const r = rng(`hex|${dateKey(todayKst(now))}|${profile ? birthKey(profile) : ''}`);
+  const r = rng(`hex|${dateKey(todayKst(now))}|${profile ? seedKey(profile) : ''}`);
   return pick(HEXAGRAMS, r);
 }
 
@@ -64,7 +74,7 @@ export function getDailyHexagram(profile, now = new Date()) {
 export function getWest(profile, now = new Date()) {
   const today = todayKst(now);
   const sign = sunSign(profile);
-  const r = rng(`tarot|${dateKey(today)}|${birthKey(profile)}`);
+  const r = rng(`tarot|${dateKey(today)}|${seedKey(profile)}`);
   const card = pick(MAJOR_ARCANA, r);
   return {
     sign,
@@ -74,6 +84,7 @@ export function getWest(profile, now = new Date()) {
     personalDay: personalDay(profile, today),
     birthstone: birthstone(profile.month),
     tarot: { card, reversed: r() < 0.3 },
+    transits: dailyTransits(natalOf(profile), now),
   };
 }
 

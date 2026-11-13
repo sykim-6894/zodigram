@@ -580,7 +580,7 @@ export function scoreBlock(s) {
         ${scoreList('east', '동양', s.east)}
         ${scoreList('west', '서양', s.west)}
       </div>
-      <p class="note">종합 점수는 동양과 서양 점수의 평균입니다. 모든 항목은 오늘의 일진·달의 위치·내 생년월일로 계산되며, 같은 날에는 바뀌지 않습니다.</p>
+      <p class="note">종합 점수는 동양과 서양 점수의 평균입니다. 모든 항목은 오늘의 일진·달과 행성의 위치·내 생년월일(태어난 시각 보정 포함)로 계산되며, 같은 날에는 바뀌지 않습니다.</p>
     </details>
   </section>`;
 }

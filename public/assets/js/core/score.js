@@ -3,7 +3,7 @@
 
 // 동양·서양 모두 가장 나쁜 조합이 50점, 가장 좋은 조합이 100점이 되도록 맞춘 배점표.
 const EAST_BASE = 70;
-const WEST_BASE = 67;
+const WEST_BASE = 68;
 export const MIN_SCORE = 50;
 export const MAX_SCORE = 100;
 const clamp = (n) => Math.max(MIN_SCORE, Math.min(MAX_SCORE, Math.round(n)));
@@ -22,11 +22,16 @@ const ANIMAL_REL = { harmony: 4, trine: 3, same: 1, neutral: 0, harm: -2, clash:
 const REL_NAME = { harmony: '육합', trine: '삼합', same: '같은 기운', neutral: '무난', harm: '해(害)', clash: '충(沖)' };
 
 // 달과 내 별자리의 각(사인 거리 0~6)
-const ASPECT = { 0: 7, 1: 0, 2: 9, 3: -9, 4: 13, 5: -5, 6: -7 };
+const ASPECT = { 0: 6, 1: 0, 2: 7, 3: -7, 4: 10, 5: -4, 6: -6 };
 // 달이 머무는 하우스
-const HOUSE = { 1: 5, 2: 3, 3: 3, 4: 0, 5: 7, 6: 0, 7: 1, 8: -4, 9: 4, 10: 5, 11: 5, 12: -5 };
+const HOUSE = { 1: 4, 2: 2, 3: 2, 4: 0, 5: 6, 6: 0, 7: 1, 8: -3, 9: 3, 10: 4, 11: 4, 12: -4 };
 // 개인일 수
-const PERSONAL_DAY = { 1: 5, 2: 0, 3: 5, 4: 1, 5: 4, 6: 3, 7: -1, 8: 5, 9: -3 };
+const PERSONAL_DAY = { 1: 4, 2: 0, 3: 4, 4: 1, 5: 3, 6: 2, 7: -1, 8: 4, 9: -2 };
+// 오늘의 행성이 출생 차트와 이루는 각(가까운 3개): 조화로운 각 +2, 긴장된 각 -2, 합은 행성에 따라
+const TRANSIT_POINTS = { good: 2, hard: -2 };
+const HEAVY_PLANETS = new Set(['mars', 'saturn']);
+export const TRANSIT_MIN = -5;
+export const TRANSIT_MAX = 6;
 // 타로 정방향의 기운
 const BRIGHT = new Set(['sun', 'star', 'world', 'wheel', 'empress', 'magician', 'chariot', 'strength', 'lovers', 'temperance']);
 const HEAVY = new Set(['tower', 'death', 'devil', 'moon', 'hanged']);
@@ -51,24 +56,39 @@ export function eastScore(e) {
   return { score: clamp(sum(EAST_BASE, items)), base: EAST_BASE, items };
 }
 
-/** 서양 점수: 달의 각 + 하우스 + 개인일 수 + 오늘의 카드 */
+/** 행성 각 점수: 가까운 각 3개를 더하고 -5~+6 으로 묶는다 */
+export function transitDelta(aspects) {
+  const top = aspects.slice(0, 3);
+  const raw = top.reduce((a, t) => a + (t.tone === 'strong' ? (HEAVY_PLANETS.has(t.transit) ? -1 : 2) : TRANSIT_POINTS[t.tone]), 0);
+  return Math.max(TRANSIT_MIN, Math.min(TRANSIT_MAX, raw));
+}
+
+/** 서양 점수: 달의 각 + 하우스 + 개인일 수 + 오늘의 카드 + 오늘의 행성 각 */
 export function westScore(w) {
   const dist = w.moon.house - 1;
   const aspectKey = Math.min(dist, 12 - dist);
   const card = w.tarot.card;
-  const cardDelta = w.tarot.reversed ? -5 : BRIGHT.has(card.symbol) ? 8 : HEAVY.has(card.symbol) ? -3 : 3;
+  const cardDelta = w.tarot.reversed ? -4 : BRIGHT.has(card.symbol) ? 6 : HEAVY.has(card.symbol) ? -2 : 2;
   const items = [
     { label: `달과 ${w.moon.aspect.name}`, detail: `달(${w.moon.moonSignName})과 내 별자리(${w.sign.ko}) — ${w.moon.aspect.tone}`, delta: ASPECT[aspectKey] },
     { label: `제${w.moon.house}하우스 · ${w.moon.houseInfo.area}`, detail: '달이 비추는 생활 영역', delta: HOUSE[w.moon.house] },
     { label: `개인일 수 ${w.personalDay.number}`, detail: '수비학으로 본 오늘의 리듬', delta: PERSONAL_DAY[w.personalDay.number] },
     { label: `오늘의 카드 ${card.ko}${w.tarot.reversed ? ' (역)' : ''}`, detail: (w.tarot.reversed ? card.rev : card.up).join(', '), delta: cardDelta },
   ];
+  if (w.transits) {
+    const top = w.transits.aspects.slice(0, 3);
+    items.push({
+      label: '오늘의 행성 각',
+      detail: top.length ? top.map((t) => t.label).join(' · ') : '출생 차트와 맞물리는 큰 각이 없는 날',
+      delta: transitDelta(top),
+    });
+  }
   return { score: clamp(sum(WEST_BASE, items)), base: WEST_BASE, items };
 }
 
 const TIERS = [
-  // 여러 생년월일·날짜로 본 분포: 90+ 약 5%, 80+ 약 35%, 70+ 약 80%, 62 미만 약 3%
-  [90, '아주 좋음', '하고 싶었던 일을 밀어붙여도 좋은 날'],
+  // 여러 생년월일·날짜로 본 분포(행성 각 반영 후): 88+ 약 6%, 80+ 약 34%, 70+ 약 83%, 62 미만 약 2%
+  [88, '아주 좋음', '하고 싶었던 일을 밀어붙여도 좋은 날'],
   [80, '좋음', '흐름이 순한 편이니 한 걸음 더 나가 보세요'],
   [70, '무난', '평소처럼 지내면 충분히 괜찮은 날'],
   [62, '천천히', '서두르지만 않으면 괜찮은 날'],
