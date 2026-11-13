@@ -8,7 +8,7 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
-  }
-  // 공유 카드 보관용 KV. 대시보드에서 만든 네임스페이스 ID를 넣으면 활성화된다.
-  // "kv_namespaces": [{ "binding": "CARDS", "id": "<KV 네임스페이스 ID>" }]
+  },
+  // 공유 카드 보관용 KV (대시보드의 zodigram-cards)
+  "kv_namespaces": [{ "binding": "CARDS", "id": "a6805ac41a18466d92c9e0a1a02ab73d" }]
 }
