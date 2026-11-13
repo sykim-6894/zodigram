@@ -309,7 +309,7 @@ export function westView(profile) {
   const today = getToday();
   if (!profile) {
     return `${dateline(today)}<div class="page-head west">${sideLabel('west')}<h1>별자리 · 타로 · 수비학</h1></div>${needProfile('west')}
-      <section class="sec">${secHead('타로', 'Tarot')}<p>생년월일 없이도 카드를 뽑을 수 있습니다.</p><a class="btn west" href="#/west/tarot">타로 세 장 뽑기</a></section>`;
+      <section class="sec">${secHead('타로', 'XXII')}<p>생년월일 없이도 카드를 뽑을 수 있습니다.</p><a class="btn west" href="#/west/tarot">타로 세 장 뽑기</a></section>`;
   }
   const w = getWest(profile);
   return `${dateline(today)}
@@ -337,7 +337,7 @@ export function westView(profile) {
   ${natalSection(profile)}
 
   <section class="sec">
-    ${secHead('오늘의 달', 'Moon Transit')}
+    ${secHead('오늘의 달', '☽︎')}
     <p class="kicker">달 · ${w.moon.moonSignName} ${Math.floor(w.moon.moonDegree)}° · 내 별자리와 ${w.moon.aspect.name}(${w.moon.aspect.tone}) · 제${w.moon.house}하우스</p>
     <h3 class="headline">${w.moon.houseInfo.area}</h3>
     <p>${w.moon.houseInfo.text}</p>
@@ -348,13 +348,13 @@ export function westView(profile) {
 
   <section class="sec two">
     <div>
-      ${secHead('생명수', 'Life Path')}
+      ${secHead('생명수')}
       <p class="big-num">${w.lifePath.number}</p>
       <h3 class="headline sm">${w.lifePath.title}</h3>
       <p>${w.lifePath.text}</p>
     </div>
     <div>
-      ${secHead('개인일 수', 'Personal Day')}
+      ${secHead('개인일 수')}
       <p class="big-num">${w.personalDay.number}</p>
       <p>${w.personalDay.text}</p>
       <p class="note">올해의 개인년 수는 ${w.personalDay.personalYear}입니다. 탄생석은 ${w.birthstone.name}(${w.birthstone.meaning}).</p>
@@ -362,7 +362,7 @@ export function westView(profile) {
   </section>
 
   <section class="sec">
-    ${secHead('오늘의 카드', 'Daily Tarot')}
+    ${secHead('오늘의 카드', 'XXII')}
     <div class="tarot-daily">
       ${tarotCard(w.tarot.card, w.tarot.reversed)}
       <div>${tarotReading(w.tarot.card, w.tarot.reversed)}
@@ -600,7 +600,7 @@ function natalSection(profile) {
   const key = [n.planets[0], n.planets[1]].concat(n.asc ? [n.asc] : []);
   const max = Math.max(...Object.values(n.elements), 1);
   return `<section class="sec">
-    ${secHead('출생 차트', 'Natal Chart')}
+    ${secHead('출생 차트', '☉︎ ☽︎ ☿︎ ♀︎ ♂︎')}
     <div class="natal">
       <div class="natal-wheel">${chartWheel(n)}</div>
       <div>
@@ -632,7 +632,7 @@ function transitSection(profile) {
   const merc = t.today.find((p) => p.key === 'mercury');
   const sky = t.today.map((p) => `<span>${p.glyph} ${p.signName}${p.retro ? ' ℞' : ''}</span>`).join('');
   return `<section class="sec">
-    ${secHead('오늘의 행성', 'Transits')}
+    ${secHead('오늘의 행성', '♃︎ ♄︎')}
     <p class="sky">${sky}</p>
     ${merc.retro ? '<p class="tip"><b>수성 역행 중</b> 연락·계약·이동은 한 번 더 확인하세요.</p>' : ''}
     ${t.aspects.length ? `<ul class="plain transits">${t.aspects.map((a) => `<li class="${a.tone}"><span class="kicker">${a.label}</span>${a.text}</li>`).join('')}</ul>`
