@@ -1,5 +1,5 @@
 // 오프라인 지원: 앱 셸은 미리 캐시, 나머지는 네트워크 우선.
-const VERSION = 'zodigram-v15';
+const VERSION = 'zodigram-v16';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'icons/icon.svg', 'assets/css/style.css',
   'assets/js/app.js', 'assets/js/ui/views.js', 'assets/js/ui/glyphs.js',

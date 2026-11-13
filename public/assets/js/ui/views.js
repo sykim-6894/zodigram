@@ -127,17 +127,6 @@ export function homeView(profile) {
     <section class="col west">${sideLabel('west')}${westBody}</section>
   </div>
 
-  <section class="sec share">
-    <div class="share-row">
-      <button class="btn" id="shareCard">운세 카드 공유</button>
-      <button class="btn ghost" id="copyLink">링크 공유</button>
-      <button class="link-btn" id="saveCard">이미지로 저장</button>
-    </div>
-    <div class="share-ready" id="shareReady" hidden></div>
-    <p class="share-status" id="shareStatus" aria-live="polite"></p>
-    <div class="share-preview" id="sharePreview"></div>
-  </section>
-
   <section class="sec">
     ${secHead('오늘의 한마디')}
     <div class="quotes">${quoteBlock(dayQuotes[0], 'east')}${quoteBlock(dayQuotes[1], 'west')}</div>
@@ -152,6 +141,22 @@ export function homeView(profile) {
         <h3 class="headline sm">${hex.keyword}</h3>
         <p>${hex.text}</p>
         <a class="more" href="#/east/iching">직접 동전을 던져 묻기</a>
+      </div>
+    </div>
+  </section>
+  <section class="sec share">
+    ${secHead('오늘을 나누기')}
+    <div class="share-layout">
+      <div class="share-preview" id="sharePreview" aria-label="공유 카드 미리보기"></div>
+      <div class="share-body">
+        <p class="share-lede">오늘의 점수와 풀이를 한 장의 카드로 만들어 보내거나 저장할 수 있어요</p>
+        <div class="share-row">
+          <button class="btn" id="shareCard">운세 카드 공유</button>
+          <button class="btn ghost" id="copyLink">링크 공유</button>
+          <button class="link-btn" id="saveCard">이미지로 저장</button>
+        </div>
+        <div class="share-ready" id="shareReady" hidden></div>
+        <p class="share-status" id="shareStatus" aria-live="polite"></p>
       </div>
     </div>
   </section>`;

@@ -440,8 +440,6 @@ fieldset.field legend { padding: 0; font-size: 14px; color: var(--ink-2); margin
 /* ── 공유 ── */
 .share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .share-status { font-size: 14px; color: var(--ink-3); min-height: 1.4em; margin-top: 12px; }
-.share-preview img { display: block; width: 270px; max-width: 100%; height: auto; border: 1px solid var(--rule); margin-top: 8px; }
-.sec.share { padding-top: 24px; }
 .link-btn { background: none; border: 0; padding: 0 4px; font-size: 14px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .btn:disabled { opacity: .45; cursor: default; }
 .share-ready { margin-top: 16px; padding: 16px 0 4px; border-top: 1px dashed var(--rule); max-width: 560px; }
@@ -550,3 +548,17 @@ fieldset.field legend { padding: 0; font-size: 14px; color: var(--ink-2); margin
 .cal-ganji { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: -4px 0 12px; font: 400 15px/1.5 var(--serif); color: var(--ink-2); }
 .cal-ganji b { font-weight: 600; color: var(--ink); }
 .cal-ganji a { margin-left: auto; font: 14px var(--sans); color: var(--east); }
+
+/* 공유: 맨 아래, 작은 미리보기 + 버튼 */
+.share-layout { display: grid; gap: 16px; }
+.share-body { min-width: 0; }
+.share-lede { color: var(--ink-2); margin-bottom: 16px; }
+.share-preview {
+  width: 120px; aspect-ratio: 4 / 5; order: 2;
+  background: var(--paper-2); border: 1px solid var(--rule);
+}
+.share-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+@media (min-width: 760px) {
+  .share-layout { grid-template-columns: 160px 1fr; gap: 32px; align-items: start; }
+  .share-preview { width: 160px; order: 0; }
+}
