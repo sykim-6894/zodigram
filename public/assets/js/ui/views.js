@@ -1,7 +1,6 @@
 // 화면 템플릿. 각 함수는 HTML 문자열을 반환하고, 이벤트 연결은 app.js가 맡는다.
-import { getToday, getEast, getWest, getDailyHexagram } from '../core/fortune.js';
+import { getToday, getEast, getWest, getDailyHexagram, getScore } from '../core/fortune.js';
 import { monthCalendar } from '../core/almanac.js';
-import { totalScore } from '../core/score.js';
 import { STEMS_KO, BRANCHES_KO, STEMS, BRANCHES, ELEMENTS, ELEMENTS_HANJA, STEM_ELEMENT, BRANCH_ELEMENT, tenGod, BRANCH_MAIN_STEM } from '../core/saju.js';
 import { TRIGRAMS } from '../data/iching.js';
 import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
@@ -70,7 +69,7 @@ export function homeView(profile) {
   if (profile) {
     const e = getEast(profile);
     const w = getWest(profile);
-    scoreHtml = scoreBlock(totalScore(e, w));
+    scoreHtml = scoreBlock(getScore(profile).score);
     eastBody = `
       <p class="kicker">오늘의 일진 ${e.daily.todayPillar.hanja} · ${e.daily.tenGod}</p>
       <h3 class="headline">${e.daily.title}</h3>

@@ -1,6 +1,5 @@
 // 오늘의 운세를 1080×1350 이미지 카드로 그려 공유하거나 저장한다. (외부 라이브러리 없이 Canvas)
-import { getToday, getEast, getWest, getDailyHexagram } from '../core/fortune.js';
-import { totalScore } from '../core/score.js';
+import { getToday, getEast, getWest, getDailyHexagram, getScore } from '../core/fortune.js';
 
 const W = 1080, H = 1350, PAD = 92;
 const C = {
@@ -79,7 +78,7 @@ function cardContent(profile) {
   if (profile) {
     const e = getEast(profile);
     const w = getWest(profile);
-    const sc = totalScore(e, w);
+    const sc = getScore(profile).score;
     return {
       head,
       score: { total: sc.total, tier: sc.tier, east: sc.east.score, west: sc.west.score },
