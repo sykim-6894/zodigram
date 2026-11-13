@@ -1,5 +1,5 @@
 // 오프라인 지원: 앱 셸은 미리 캐시, 나머지는 네트워크 우선.
-const VERSION = 'zodigram-v17';
+const VERSION = 'zodigram-v18';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'icons/icon.svg', 'assets/css/style.css',
   'assets/js/app.js', 'assets/js/ui/views.js', 'assets/js/ui/glyphs.js',
@@ -10,7 +10,7 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -20,8 +20,14 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // 같은 사이트의 파일은 브라우저 저장본을 그대로 믿지 않고 서버에 새 버전인지 확인한다
+  const url = new URL(e.request.url);
+  const sameOrigin = url.origin === self.location.origin;
+  const req = sameOrigin && e.request.mode !== 'navigate'
+    ? fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' })
+    : fetch(e.request);
   e.respondWith(
-    fetch(e.request)
+    req
       .then((res) => {
         if (res.ok || res.type === 'opaque') {
           const copy = res.clone();

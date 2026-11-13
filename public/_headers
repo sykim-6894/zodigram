@@ -6,5 +6,13 @@
 /sw.js
   Cache-Control: no-cache
 
+# 스크립트·스타일은 매번 새 버전인지 확인한다(ETag로 바뀌지 않았으면 304라 빠르다).
+# 오래 저장해 두면 새 HTML과 예전 스크립트가 섞여 화면이 어긋난다.
 /assets/*
-  Cache-Control: public, max-age=3600
+  Cache-Control: no-cache
+
+/icons/*
+  Cache-Control: public, max-age=86400
+
+/og.png
+  Cache-Control: public, max-age=86400
