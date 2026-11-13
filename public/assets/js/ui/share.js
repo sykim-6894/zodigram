@@ -146,21 +146,34 @@ export async function drawTodayCard(profile) {
   return canvas;
 }
 
-/** 카드를 만들어 공유(가능하면) 또는 저장하고, 결과 문장을 돌려준다 */
+export const siteUrl = () => `${location.origin}${location.pathname}`;
+
+/** 클립보드 복사(실패하면 false). 사용자 클릭 직후에 불러야 브라우저가 허용한다. */
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch { return false; }
+}
+
+/**
+ * 카드를 만들어 공유(가능하면) 또는 저장하고, 결과 문장을 돌려준다.
+ * 카카오톡 등 일부 앱은 이미지와 함께 보낸 글을 버리므로, 주소를 클립보드에도 미리 넣어 둔다.
+ */
 export async function shareTodayCard(profile) {
+  const link = siteUrl();
+  const copied = await copyText(link);
   const canvas = await drawTodayCard(profile);
   const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
   const key = getToday().key;
   const file = new File([blob], `zodigram-${key}.png`, { type: 'image/png' });
   const url = URL.createObjectURL(blob);
+  const tail = copied ? ' 주소도 복사해 두었으니 대화창에 붙여 넣으면 함께 보낼 수 있어요.' : '';
 
   const preview = document.getElementById('sharePreview');
   if (preview) preview.innerHTML = `<img src="${url}" alt="오늘의 운세 카드" width="270" height="338">`;
 
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'Zodigram · 오늘의 운세', text: `오늘의 운세 — ${location.origin}${location.pathname}` });
-      return '공유했습니다.';
+      await navigator.share({ files: [file], title: 'Zodigram · 오늘의 운세', text: `오늘의 운세 보기 ${link}`, url: link });
+      return `공유했습니다.${tail}`;
     } catch (e) {
       if (e?.name === 'AbortError') return '공유를 취소했습니다.';
     }
@@ -171,5 +184,19 @@ export async function shareTodayCard(profile) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  return '이미지를 저장했습니다.';
+  return `이미지를 저장했습니다.${tail}`;
+}
+
+/** 링크만 공유(미리보기 카드가 붙는다). 공유 창이 없으면 복사. */
+export async function shareLink() {
+  const link = siteUrl();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Zodigram · 별과 괘', text: '동양의 괘, 서양의 별로 읽는 오늘의 운세', url: link });
+      return '공유했습니다.';
+    } catch (e) {
+      if (e?.name === 'AbortError') return '공유를 취소했습니다.';
+    }
+  }
+  return (await copyText(link)) ? '주소를 복사했습니다.' : link;
 }

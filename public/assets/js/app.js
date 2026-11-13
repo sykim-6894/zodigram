@@ -6,7 +6,7 @@ import { lunarToSolar, solarToLunar, formatLunar, LUNAR_MIN_YEAR, LUNAR_MAX_YEAR
 import { MAJOR_ARCANA, SPREAD_POSITIONS } from './data/tarot.js';
 import { hexagramSvg, coinSvg } from './ui/glyphs.js';
 import { getToday } from './core/fortune.js';
-import { shareTodayCard } from './ui/share.js';
+import { shareTodayCard, shareLink } from './ui/share.js';
 import * as V from './ui/views.js';
 
 const view = document.getElementById('view');
@@ -108,12 +108,7 @@ function bindShare() {
     }
   });
   document.getElementById('copyLink')?.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(location.origin + location.pathname);
-      status.textContent = '주소를 복사했습니다.';
-    } catch {
-      status.textContent = location.origin + location.pathname;
-    }
+    status.textContent = await shareLink();
   });
 }
 
