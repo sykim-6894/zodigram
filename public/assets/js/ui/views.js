@@ -359,9 +359,9 @@ export function meView(profile) {
 
 /* ───────── 소개 ───────── */
 export function aboutView() {
-  return `<div class="page-head"><h1>별과 괘에 대하여</h1></div>
+  return `<div class="page-head"><h1>Zodigram에 대하여</h1></div>
   <section class="sec">
-    <p>별과 괘는 동양의 괘(卦)와 서양의 별(星)로 하루를 읽어 보는 작은 책력입니다. 모든 계산은 브라우저 안에서 이루어지며 생년월일은 서버로 전송되지 않습니다.</p>
+    <p>Zodigram(별과 괘)은 서양의 별자리(Zodiac)와 동양의 괘(-gram)를 합친 이름입니다. 서양의 별과 동양의 괘로 하루를 읽어 보는 작은 책력이에요. 모든 계산은 브라우저 안에서 이루어지며 생년월일은 서버로 전송되지 않습니다.</p>
   </section>
   <section class="sec two">
     <div>${secHead('동양', '東')}

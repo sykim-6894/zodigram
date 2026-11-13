@@ -1,9 +1,9 @@
 {
-  "name": "byeolgwae",
+  "name": "zodigram",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "별과 괘 — 동양과 서양의 오늘 운세",
+  "description": "Zodigram · 별과 괘 — 동양과 서양의 오늘 운세",
   "scripts": {
     "test": "node --test tests/core.test.mjs",
     "dev": "node scripts/serve.mjs"

@@ -1,6 +1,6 @@
 {
-  "name": "별과 괘 — 동양과 서양의 오늘",
-  "short_name": "별과 괘",
+  "name": "Zodigram · 별과 괘",
+  "short_name": "Zodigram",
   "description": "사주·띠·주역, 별자리·타로·수비학으로 읽는 오늘",
   "lang": "ko",
   "start_url": "./",

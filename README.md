@@ -1,4 +1,6 @@
-# 별과 괘 (星 · 卦)
+# Zodigram · 별과 괘
+
+> Zodiac + (Tri/Hexa)gram — 서양의 별자리와 동양의 괘
 
 동양의 **괘**와 서양의 **별**로 읽는 오늘의 운세.
 빌드 과정 없는 정적 사이트(HTML·CSS·ES 모듈)이고, 모든 계산은 브라우저 안에서 이루어집니다. 생년월일은 서버로 보내지 않습니다.
@@ -75,7 +77,7 @@ wrangler.jsonc          ← Cloudflare Workers 배포 설정
 1. **Capacitor** (권장): 지금 코드를 그대로 감싸 Android/iOS 앱으로 빌드
    ```bash
    npm i @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
-   npx cap init "별과 괘" com.example.byeolgwae --web-dir public
+   npx cap init "Zodigram" com.example.zodigram --web-dir public
    npx cap add android && npx cap open android
    ```
    이후 `storage.js` 를 `@capacitor/preferences` 로, 알림은 `@capacitor/local-notifications` 로 "오늘의 운세" 아침 알림을 붙이면 됩니다.

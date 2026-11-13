@@ -22,4 +22,4 @@ createServer(async (req, res) => {
     res.writeHead(200, { 'content-type': types[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
     res.end(body);
   } catch { res.writeHead(404).end('not found'); }
-}).listen(port, () => console.log(`별과 괘 → http://localhost:${port}`));
+}).listen(port, () => console.log(`Zodigram → http://localhost:${port}`));

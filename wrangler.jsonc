@@ -1,6 +1,6 @@
 // Cloudflare Workers(정적 자산) 배포 설정: npx wrangler deploy
 {
-  "name": "byeolgwae",
+  "name": "zodigram",
   "compatibility_date": "2026-11-01",
   "assets": {
     "directory": "./public",
