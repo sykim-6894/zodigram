@@ -7,6 +7,7 @@ import { MAJOR_ARCANA, SPREAD_POSITIONS } from './data/tarot.js';
 import { hexagramSvg, coinSvg } from './ui/glyphs.js';
 import { getToday } from './core/fortune.js';
 import { manseLookup } from './core/manse.js';
+import { getYear, getMonth, getQuarter } from './core/period.js';
 import { prepareCard, shareCard, shareLink, downloadCard, uploadCard, shareCardLink, copyLink } from './ui/share.js';
 import * as V from './ui/views.js';
 
@@ -30,6 +31,9 @@ let manse = nowManse();
 
 const routes = {
   '/': () => V.homeView(loadProfile()),
+  '/month': () => periodPage('month'),
+  '/quarter': () => periodPage('quarter'),
+  '/year': () => periodPage('year'),
   '/east': () => V.eastView(loadProfile()),
   '/east/iching': () => V.ichingView(),
   '/west': () => V.westView(loadProfile()),
@@ -49,6 +53,14 @@ const binders = {
   '/': bindShare,
 };
 
+function periodPage(kind) {
+  const p = loadProfile();
+  const r = p ? { year: getYear, month: getMonth, quarter: getQuarter }[kind](p) : null;
+  return V.periodView(kind, p, r);
+}
+
+const HOME_PATHS = ['/', '/month', '/quarter', '/year'];
+
 function currentPath() {
   const h = location.hash.replace(/^#/, '') || '/';
   return routes[h] ? h : '/';
@@ -60,7 +72,7 @@ function render() {
   document.body.dataset.route = path.split('/')[1] || 'home';
   document.querySelectorAll('[data-nav]').forEach((a) => {
     const target = a.getAttribute('href').replace(/^#/, '');
-    const active = target === '/' ? path === '/' : path.startsWith(target);
+    const active = target === '/' ? HOME_PATHS.includes(path) : path.startsWith(target);
     a.toggleAttribute('aria-current', active);
     if (active) a.setAttribute('aria-current', 'page');
   });

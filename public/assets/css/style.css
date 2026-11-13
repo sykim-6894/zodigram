@@ -562,3 +562,22 @@ fieldset.field legend { padding: 0; font-size: 14px; color: var(--ink-2); margin
   .share-layout { grid-template-columns: 160px 1fr; gap: 32px; align-items: start; }
   .share-preview { width: 160px; order: 0; }
 }
+
+/* ── 기간 탭 ── */
+.ptabs { display: flex; gap: 4px; margin: 16px 0 0; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: none; }
+.ptabs a {
+  flex: none; padding: 8px 12px; text-decoration: none; font-size: 15px; color: var(--ink-3);
+  border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+  transition: color .16s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ptabs a:first-child { padding-left: 0; }
+.ptabs a:hover { color: var(--ink); }
+.ptabs a[aria-current] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+.period-title { margin: 24px 0 0; font: 400 15px/1.4 var(--serif); color: var(--ink-2); }
+.qlist li { display: grid; grid-template-columns: 40px 1fr 32px; gap: 12px; align-items: baseline; padding: 12px 0; }
+.q-m { font: 600 15px/1.4 var(--serif); }
+.q-t b { display: block; font: 600 16px/1.4 var(--serif); }
+.q-t small { display: block; font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+.q-s { font: 600 18px/1 var(--serif); text-align: right; font-variant-numeric: tabular-nums; }
+.col.east .q-s { color: var(--east); }
+.col.west .q-s { color: var(--west); }

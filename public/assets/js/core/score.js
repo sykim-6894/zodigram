@@ -6,25 +6,25 @@ const EAST_BASE = 70;
 const WEST_BASE = 68;
 export const MIN_SCORE = 50;
 export const MAX_SCORE = 100;
-const clamp = (n) => Math.max(MIN_SCORE, Math.min(MAX_SCORE, Math.round(n)));
+export const clamp = (n) => Math.max(MIN_SCORE, Math.min(MAX_SCORE, Math.round(n)));
 
 // 오늘 일진 천간이 내 일간에게 주는 십신
-const TEN_GOD = { 식신: 17, 정인: 15, 정재: 15, 정관: 14, 편재: 12, 비견: 7, 편인: 3, 상관: 0, 겁재: -5, 편관: -7 };
-const TEN_GOD_WHY = {
+export const TEN_GOD = { 식신: 17, 정인: 15, 정재: 15, 정관: 14, 편재: 12, 비견: 7, 편인: 3, 상관: 0, 겁재: -5, 편관: -7 };
+export const TEN_GOD_WHY = {
   식신: '표현과 여유가 생기는 길한 기운', 정인: '도움과 배움이 들어오는 기운', 정재: '성실함이 보상받는 기운',
   정관: '신뢰와 질서가 서는 기운', 편재: '뜻밖의 기회가 오는 기운', 비견: '동료의 힘이 보태지는 기운',
   편인: '생각은 깊어지나 결정은 느린 기운', 상관: '재치는 늘지만 말이 앞서기 쉬운 기운',
   겁재: '경쟁과 지출이 늘기 쉬운 기운', 편관: '압박과 책임이 몰리기 쉬운 기운',
 };
 // 지지 관계(일지·띠)
-const REL = { harmony: 7, trine: 5, same: 2, neutral: 0, harm: -4, clash: -7 };
-const ANIMAL_REL = { harmony: 4, trine: 3, same: 1, neutral: 0, harm: -2, clash: -3 };
-const REL_NAME = { harmony: '육합', trine: '삼합', same: '같은 기운', neutral: '무난', harm: '해(害)', clash: '충(沖)' };
+export const REL = { harmony: 7, trine: 5, same: 2, neutral: 0, harm: -4, clash: -7 };
+export const ANIMAL_REL = { harmony: 4, trine: 3, same: 1, neutral: 0, harm: -2, clash: -3 };
+export const REL_NAME = { harmony: '육합', trine: '삼합', same: '같은 기운', neutral: '무난', harm: '해(害)', clash: '충(沖)' };
 
 // 달과 내 별자리의 각(사인 거리 0~6)
-const ASPECT = { 0: 6, 1: 0, 2: 7, 3: -7, 4: 10, 5: -4, 6: -6 };
+export const ASPECT = { 0: 6, 1: 0, 2: 7, 3: -7, 4: 10, 5: -4, 6: -6 };
 // 달이 머무는 하우스
-const HOUSE = { 1: 4, 2: 2, 3: 2, 4: 0, 5: 6, 6: 0, 7: 1, 8: -3, 9: 3, 10: 4, 11: 4, 12: -4 };
+export const HOUSE = { 1: 4, 2: 2, 3: 2, 4: 0, 5: 6, 6: 0, 7: 1, 8: -3, 9: 3, 10: 4, 11: 4, 12: -4 };
 // 개인일 수
 const PERSONAL_DAY = { 1: 4, 2: 0, 3: 4, 4: 1, 5: 3, 6: 2, 7: -1, 8: 4, 9: -2 };
 // 오늘의 행성이 출생 차트와 이루는 각(가까운 3개): 조화로운 각 +2, 긴장된 각 -2, 합은 행성에 따라
@@ -105,4 +105,10 @@ export function totalScore(e, w) {
   const total = Math.round((east.score + west.score) / 2);
   const [, tier, advice] = TIERS.find(([min]) => total >= min);
   return { total, tier, tone: TIER_TONE[tier], advice, east, west };
+}
+
+/** 점수 → [등급, 한 줄 조언] */
+export function tierOf(total) {
+  const [, tier, advice] = TIERS.find(([min]) => total >= min);
+  return { tier, advice, tone: TIER_TONE[tier] };
 }

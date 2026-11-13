@@ -120,6 +120,7 @@ export function homeView(profile) {
   const greet = profile?.name ? `<p class="greet">${esc(profile.name)} 님의 오늘</p>` : '';
 
   return `${dateline(today)}
+  ${periodTabs('/')}
   ${greet}
   ${scoreHtml}
   <div class="split">
@@ -720,4 +721,103 @@ function monthPillarLine(y, m) {
   const hm = `${String(jie.hour).padStart(2, '0')}:${String(jie.minute).padStart(2, '0')}`;
   const yearText = before.year.index === after.year.index ? `${after.year.hanja}년` : `${before.year.hanja}년 → ${after.year.hanja}년`;
   return `<p class="cal-ganji"><span>${yearText}</span><span>${before.month.hanja}월 → <b>${jie.name} ${m}.${jie.day} ${hm}</b>부터 ${after.month.hanja}월</span><a href="#/manse">만세력</a></p>`;
+}
+
+/* ───────── 기간 탭: 오늘 · 이달 · 이번 분기 · 올해 ───────── */
+const PERIOD_TABS = [['/', '오늘'], ['/month', '이달'], ['/quarter', '이번 분기'], ['/year', '올해']];
+
+export function periodTabs(active) {
+  return `<nav class="ptabs" aria-label="운세 기간">${PERIOD_TABS.map(([href, label]) =>
+    `<a href="#${href}"${href === active ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
+}
+
+function periodWhy(side, title, part) {
+  const rows = part.average
+    ? part.items.map((i) => `<li><span>${esc(i.label)}<small>${esc(i.detail)}</small></span><em>${i.delta}</em></li>`).join('')
+    : `<li><span>기본 점수</span><em>${part.base}</em></li>${part.items.map((i) => `<li class="${i.delta > 0 ? 'up' : i.delta < 0 ? 'down' : ''}"><span>${esc(i.label)}<small>${esc(i.detail)}</small></span><em>${sign(i.delta)}</em></li>`).join('')}`;
+  return `<div class="why ${side}"><h3 class="why-h"><span>${title}</span><b>${part.score}</b></h3><ul>${rows}</ul>
+    ${part.average ? '<p class="note">세 달 점수의 평균입니다</p>' : ''}</div>`;
+}
+
+function periodScore(r) {
+  return `<section class="score" aria-label="${esc(r.title)} 점수">
+    <div class="score-main">
+      <p class="score-num"><b>${r.total}</b><span>점</span></p>
+      <div><p class="score-tier">${r.tier}</p><p class="score-advice">${r.advice}</p></div>
+    </div>
+    <div class="score-sides">
+      <div class="ss east"><span>동양</span><span class="ss-bar"><i style="width:${r.east.score}%"></i></span><b>${r.east.score}</b></div>
+      <div class="ss west"><span>서양</span><span class="ss-bar"><i style="width:${r.west.score}%"></i></span><b>${r.west.score}</b></div>
+    </div>
+    <details class="score-why">
+      <summary>점수가 나온 이유</summary>
+      <div class="why-grid">${periodWhy('east', '동양', r.east)}${periodWhy('west', '서양', r.west)}</div>
+      <p class="note">종합 점수는 동양과 서양 점수의 평균입니다. 같은 기간 안에서는 바뀌지 않습니다.</p>
+    </details>
+  </section>`;
+}
+
+const fact = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`;
+
+function yearColumns(r) {
+  const e = r.eastView, w = r.westView;
+  return `<div class="split">
+    <section class="col east">${sideLabel('east')}
+      <p class="kicker">세운 ${e.pillar.hanja}(${e.pillar.hangul}) · ${e.god}</p>
+      <h3 class="headline">${e.title}</h3>
+      <p class="lede">${e.text}</p>
+      ${e.samjae ? `<p class="tip"><b>${e.samjae.name}</b>${e.samjae.text}</p>` : ''}
+      <dl class="facts">${fact('올해', `${e.pillar.hanja}년`)}${fact('십신', e.god)}${fact('삼재', e.samjae ? e.samjae.name : '해당 없음')}</dl>
+      <p class="note">${e.note}${e.samjae ? '. 삼재는 옛 풍속이니 가볍게 참고하세요' : ''}</p>
+    </section>
+    <section class="col west">${sideLabel('west')}
+      <p class="kicker">개인년 ${w.cycle.number} · 목성 제${w.jupiter.house}하우스 · 토성 제${w.saturn.house}하우스</p>
+      <h3 class="headline">${w.cycle.title}</h3>
+      <p class="lede">${w.cycle.text}</p>
+      <p>목성은 <b>${w.jupiter.area}</b> 영역을 지나며 기회를 넓혀 주고, 토성은 <b>${w.saturn.area}</b> 영역을 차근차근 다지게 합니다.</p>
+      <dl class="facts">${fact('목성', w.jupiter.path)}${fact('토성', w.saturn.path)}</dl>
+    </section>
+  </div>`;
+}
+
+function monthColumns(r) {
+  const e = r.eastView, w = r.westView;
+  return `<div class="split">
+    <section class="col east">${sideLabel('east')}
+      <p class="kicker">월운 ${e.pillar.hanja}(${e.pillar.hangul}) · ${e.god}</p>
+      <h3 class="headline">${e.title}</h3>
+      <p class="lede">${e.text}</p>
+      <p class="note">${e.note}</p>
+    </section>
+    <section class="col west">${sideLabel('west')}
+      <p class="kicker">개인월 ${w.cycle.number} · 태양 제${w.sunHouse}하우스</p>
+      <h3 class="headline">${w.cycle.title}</h3>
+      <p class="lede">${w.cycle.text} 이달은 <b>${w.area}</b>에 관심과 힘이 모입니다.</p>
+      ${w.retro.length ? `<p class="tip"><b>수성 역행 ${w.retro.map((x) => x.text).join(', ')}</b>연락·계약·이동은 한 번 더 확인하세요</p>` : ''}
+      <dl class="facts">${fact('태양', `제${w.sunHouse}하우스`)}${fact('금성', w.venus)}${fact('수성 역행', w.retro.length ? '있음' : '없음')}</dl>
+    </section>
+  </div>`;
+}
+
+function quarterColumns(r) {
+  const row = (m, side) => `<li><span class="q-m">${m.month}월</span><span class="q-t">${side === 'east'
+    ? `<b>${m.eastView.title}</b><small>월운 ${m.eastView.pillar.hanja} · ${m.eastView.god}</small>`
+    : `<b>${m.westView.cycle.title}</b><small>태양 제${m.westView.sunHouse}하우스 · ${m.westView.area}</small>`}</span><span class="q-s">${m[side].score}</span></li>`;
+  return `<div class="split">
+    <section class="col east">${sideLabel('east')}<ul class="plain qlist">${r.months.map((m) => row(m, 'east')).join('')}</ul></section>
+    <section class="col west">${sideLabel('west')}<ul class="plain qlist">${r.months.map((m) => row(m, 'west')).join('')}</ul>
+      ${r.retro.length ? `<p class="note">이번 분기 수성 역행: ${r.retro.map((x) => x.text).join(', ')}</p>` : ''}</section>
+  </div>`;
+}
+
+export function periodView(kind, profile, r) {
+  const today = getToday();
+  const path = { month: '/month', quarter: '/quarter', year: '/year' }[kind];
+  if (!profile) return `${dateline(today)}${periodTabs(path)}${needProfile('east')}`;
+  const cols = kind === 'year' ? yearColumns(r) : kind === 'month' ? monthColumns(r) : quarterColumns(r);
+  return `${dateline(today)}
+  ${periodTabs(path)}
+  <p class="period-title">${r.title}</p>
+  ${periodScore(r)}
+  ${cols}`;
 }

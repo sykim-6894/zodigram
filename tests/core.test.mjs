@@ -280,3 +280,31 @@ test('서양 점수: 행성 각 항목 포함, 어떤 조합도 50~100', () => {
   const busan = getWest({ ...p, place: '부산' }, new Date('2026-11-13T03:00:00Z'));
   assert.deepEqual(busan.tarot, w.tarot);
 });
+
+import { getYear, getMonth, getQuarter, samjae, mercuryRetrogrades } from '../public/assets/js/core/period.js';
+
+test('기간 운세: 삼재·수성 역행·점수 범위', () => {
+  // 2026 丙午년: 亥卯未(돼지·토끼·양)띠 눌삼재, 말띠는 해당 없음
+  assert.equal(samjae(11, 6).name, '눌삼재');
+  assert.equal(samjae(5, 5), null);
+  assert.equal(samjae(3, 5).name, '들삼재');
+  // 2024년 수성 역행(실제: 4.1~4.25, 8.5~8.28, 11.26~12.15 무렵)
+  const r = mercuryRetrogrades(2024, 3, 1, 2024, 12, 31).map((x) => x.text);
+  assert.equal(r.length, 3);
+  assert.ok(r[0].startsWith('4.'));
+  const now = new Date('2026-11-13T03:00:00Z');
+  for (let y = 1965; y < 2010; y += 4) {
+    const p = { year: y, month: (y % 12) + 1, day: (y % 27) + 1, hour: y % 24, minute: 0 };
+    for (const res of [getYear(p, now), getMonth(p, now), getQuarter(p, now)]) {
+      for (const v of [res.total, res.east.score, res.west.score]) assert.ok(v >= 50 && v <= 100, `${res.kind} ${v}`);
+      assert.ok(res.tier && res.advice);
+    }
+  }
+  const p = { year: 1990, month: 5, day: 15, hour: 10, minute: 30 };
+  const y = getYear(p, now);
+  assert.equal(y.eastView.pillar.hanja, '丙午');
+  assert.equal(y.east.score, Math.max(50, Math.min(100, y.east.base + y.east.items.reduce((a, i) => a + i.delta, 0))));
+  const q = getQuarter(p, now);
+  assert.equal(q.months.map((m) => m.month).join(','), '10,11,12');
+  assert.equal(q.east.score, Math.round(q.months.reduce((a, m) => a + m.east.score, 0) / 3));
+});
