@@ -1,5 +1,6 @@
 // 오늘의 운세를 1080×1350 이미지 카드로 그려 공유하거나 저장한다. (외부 라이브러리 없이 Canvas)
 import { getToday, getEast, getWest, getDailyHexagram } from '../core/fortune.js';
+import { totalScore } from '../core/score.js';
 
 const W = 1080, H = 1350, PAD = 92;
 const C = {
@@ -78,8 +79,10 @@ function cardContent(profile) {
   if (profile) {
     const e = getEast(profile);
     const w = getWest(profile);
+    const sc = totalScore(e, w);
     return {
       head,
+      score: { total: sc.total, tier: sc.tier, east: sc.east.score, west: sc.west.score },
       greet: profile.name ? `${profile.name} 님의 오늘` : '오늘의 운세',
       east: { side: 'east', kicker: `오늘의 일진 ${e.daily.todayPillar.hanja} · ${e.daily.tenGod} · ${e.animal.name}띠`, title: e.daily.title, body: e.daily.text },
       west: { side: 'west', kicker: `${w.sign.ko} · 달이 ${w.moon.moonSignName}에 · 오늘의 카드 ${w.tarot.card.ko}${w.tarot.reversed ? '(역)' : ''}`, title: `${w.moon.houseInfo.area}에 빛이 듭니다`, body: w.moon.houseInfo.text },
@@ -98,7 +101,7 @@ function cardContent(profile) {
 
 export async function drawTodayCard(profile) {
   const c = cardContent(profile);
-  const all = JSON.stringify(c) + 'Zodigram별과괘東西동양서양…·';
+  const all = JSON.stringify(c) + 'Zodigram별과괘東西동양서양…·점0123456789';
   if (document.fonts?.load) {
     await Promise.all([
       document.fonts.load(`600 50px ${SERIF}`, all),
@@ -124,6 +127,15 @@ export async function drawTodayCard(profile) {
   text(ctx, c.head, PAD, 232, `400 25px ${SANS}`, C.ink2);
   rule(ctx, 254, 1.5);
   text(ctx, c.greet, PAD, 316, `400 28px ${SERIF}`, C.ink2);
+  if (c.score) {
+    // 오른쪽: 종합 점수 (예: 52점 보통)
+    ctx.font = `400 22px ${SANS}`;
+    const tierW = ctx.measureText(c.score.tier).width;
+    text(ctx, c.score.tier, W - PAD, 316, `500 22px ${SANS}`, C.ink2, 'right');
+    ctx.font = `600 64px ${SERIF}`;
+    text(ctx, '점', W - PAD - tierW - 14, 316, `400 26px ${SERIF}`, C.ink2, 'right');
+    text(ctx, String(c.score.total), W - PAD - tierW - 46, 316, `600 64px ${SERIF}`, C.ink, 'right');
+  }
 
   let y = block(ctx, 350, c.east);
   rule(ctx, y + 4, 1, C.rule);

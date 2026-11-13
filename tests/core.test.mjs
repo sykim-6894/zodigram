@@ -110,3 +110,19 @@ test('길일 달력: 절기·공휴일·손 없는 날', () => {
   assert.ok(mine.hasProfile);
   assert.equal(mine.cells.filter(Boolean).find((c) => c.day === 13).tenGod, '겁재');
 });
+
+import { totalScore } from '../public/assets/js/core/score.js';
+
+test('오늘의 점수: 항목 합과 일치하고 하루 동안 같다', () => {
+  const p = { year: 1990, month: 5, day: 15, hour: 10, minute: 30 };
+  const now = new Date('2026-11-13T03:00:00Z');
+  const s = totalScore(getEast(p, now), getWest(p, now));
+  for (const part of [s.east, s.west]) {
+    const raw = s.base + part.items.reduce((a, i) => a + i.delta, 0);
+    assert.equal(part.score, Math.max(30, Math.min(96, raw)));
+  }
+  assert.equal(s.total, Math.round((s.east.score + s.west.score) / 2));
+  const later = new Date('2026-11-13T12:00:00Z');
+  assert.equal(totalScore(getEast(p, later), getWest(p, later)).total, s.total);
+  assert.ok(s.tier && s.advice);
+});

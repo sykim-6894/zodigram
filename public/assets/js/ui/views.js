@@ -1,6 +1,7 @@
 // 화면 템플릿. 각 함수는 HTML 문자열을 반환하고, 이벤트 연결은 app.js가 맡는다.
 import { getToday, getEast, getWest, getDailyHexagram } from '../core/fortune.js';
 import { monthCalendar } from '../core/almanac.js';
+import { totalScore } from '../core/score.js';
 import { STEMS_KO, BRANCHES_KO, STEMS, BRANCHES, ELEMENTS, ELEMENTS_HANJA, STEM_ELEMENT, BRANCH_ELEMENT, tenGod, BRANCH_MAIN_STEM } from '../core/saju.js';
 import { TRIGRAMS } from '../data/iching.js';
 import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
@@ -65,10 +66,11 @@ function quoteBlock(q, side) {
 export function homeView(profile) {
   const today = getToday();
   const hex = getDailyHexagram(profile);
-  let eastBody, westBody;
+  let eastBody, westBody, scoreHtml = '';
   if (profile) {
     const e = getEast(profile);
     const w = getWest(profile);
+    scoreHtml = scoreBlock(totalScore(e, w));
     eastBody = `
       <p class="kicker">오늘의 일진 ${e.daily.todayPillar.hanja} · ${e.daily.tenGod}</p>
       <h3 class="headline">${e.daily.title}</h3>
@@ -101,6 +103,7 @@ export function homeView(profile) {
 
   return `${dateline(today)}
   ${greet}
+  ${scoreHtml}
   <div class="split">
     <section class="col east">${sideLabel('east')}${eastBody}</section>
     <section class="col west">${sideLabel('west')}${westBody}</section>
@@ -514,4 +517,41 @@ export function shareReadyHtml(link) {
 export function shareFallbackHtml() {
   return `<p class="kicker">지금은 카드 주소를 만들 수 없어요. 이미지로 바로 보내거나 저장해 주세요.</p>
     <div class="share-row"><button class="btn" id="shareFile">이미지로 공유</button></div>`;
+}
+
+/* ───────── 오늘의 점수 ───────── */
+const sign = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '±0');
+
+function scoreList(side, title, part, base) {
+  return `<div class="why ${side}">
+    <h3 class="why-h"><span>${title}</span><b>${part.score}</b></h3>
+    <ul>
+      <li><span>기본 점수</span><em>${base}</em></li>
+      ${part.items.map((i) => `<li class="${i.delta > 0 ? 'up' : i.delta < 0 ? 'down' : ''}"><span>${esc(i.label)}<small>${esc(i.detail)}</small></span><em>${sign(i.delta)}</em></li>`).join('')}
+    </ul>
+  </div>`;
+}
+
+export function scoreBlock(s) {
+  return `<section class="score" aria-label="오늘의 점수">
+    <div class="score-main">
+      <p class="score-num"><b>${s.total}</b><span>점</span></p>
+      <div>
+        <p class="score-tier">${s.tier}</p>
+        <p class="score-advice">${s.advice}</p>
+      </div>
+    </div>
+    <div class="score-sides">
+      <div class="ss east"><span>동양</span><span class="ss-bar"><i style="width:${s.east.score}%"></i></span><b>${s.east.score}</b></div>
+      <div class="ss west"><span>서양</span><span class="ss-bar"><i style="width:${s.west.score}%"></i></span><b>${s.west.score}</b></div>
+    </div>
+    <details class="score-why">
+      <summary>점수가 나온 이유</summary>
+      <div class="why-grid">
+        ${scoreList('east', '동양', s.east, s.base)}
+        ${scoreList('west', '서양', s.west, s.base)}
+      </div>
+      <p class="note">종합 점수는 동양과 서양 점수의 평균입니다. 모든 항목은 오늘의 일진·달의 위치·내 생년월일로 계산되며, 같은 날에는 바뀌지 않습니다.</p>
+    </details>
+  </section>`;
 }
