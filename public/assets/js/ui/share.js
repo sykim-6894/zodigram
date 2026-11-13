@@ -86,7 +86,7 @@ function cardContent(profile) {
       greet: profile.name ? `${profile.name} 님의 오늘` : '오늘의 운세',
       east: { side: 'east', kicker: `오늘의 일진 ${e.daily.todayPillar.hanja} · ${e.daily.tenGod} · ${e.animal.name}띠`, title: e.daily.title, body: e.daily.text },
       west: { side: 'west', kicker: `${w.sign.ko} · 달이 ${w.moon.moonSignName}에 · 오늘의 카드 ${w.tarot.card.ko}${w.tarot.reversed ? '(역)' : ''}`, title: `${w.moon.houseInfo.area}에 빛이 듭니다`, body: w.moon.houseInfo.text },
-      quote: today.eastQuote,
+      quote: { text: sc.message.q, src: sc.message.src },
     };
   }
   const hex = getDailyHexagram(null);

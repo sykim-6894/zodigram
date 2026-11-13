@@ -64,7 +64,8 @@ export function getWest(profile, now = new Date()) {
   const card = pick(MAJOR_ARCANA, r);
   return {
     sign,
-    moon: dailyMoon(sign.index, now),
+    // 하루 동안 결과가 바뀌지 않도록 오늘 정오(한국시) 달의 위치로 본다
+    moon: dailyMoon(sign.index, new Date(Date.UTC(today.year, today.month - 1, today.day, 3))),
     lifePath: lifePath(profile),
     personalDay: personalDay(profile, today),
     birthstone: birthstone(profile.month),

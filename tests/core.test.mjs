@@ -137,3 +137,26 @@ test('오늘의 점수: 50~100 범위', () => {
     }
   }
 });
+
+import { SCORE_WORDS } from '../public/assets/js/data/score-words.js';
+
+test('점수 한마디: 모든 등급에 문구가 있고 하루 동안 같다', () => {
+  for (const tier of ['아주 좋음', '좋음', '무난', '천천히', '쉬어 가기']) {
+    assert.ok(SCORE_WORDS[tier]?.length >= 3, tier);
+    for (const w of SCORE_WORDS[tier]) assert.ok(w.q && w.src && w.a);
+  }
+  const p = { year: 1990, month: 5, day: 15, hour: 10, minute: 30 };
+  const a = totalScore(getEast(p, new Date('2026-11-13T01:00:00Z')), getWest(p, new Date('2026-11-13T01:00:00Z')));
+  const b = totalScore(getEast(p, new Date('2026-11-13T13:00:00Z')), getWest(p, new Date('2026-11-13T13:00:00Z')));
+  assert.deepEqual(a.message, b.message);
+  assert.ok(SCORE_WORDS[a.tier].includes(a.message));
+});
+
+test('서양 풀이는 하루 동안 같은 달 위치를 쓴다', () => {
+  const p = { year: 1990, month: 5, day: 15 };
+  // 2026-11-14 한국시 0시 1분과 23시 59분
+  const a = getWest(p, new Date('2026-11-13T15:01:00Z'));
+  const b = getWest(p, new Date('2026-11-14T14:59:00Z'));
+  assert.equal(a.moon.moonSign, b.moon.moonSign);
+  assert.equal(a.moon.house, b.moon.house);
+});

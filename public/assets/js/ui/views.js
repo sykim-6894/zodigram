@@ -321,7 +321,7 @@ export function westView(profile) {
     <p class="kicker">달 · ${w.moon.moonSignName} ${Math.floor(w.moon.moonDegree)}° · 내 별자리와 ${w.moon.aspect.name}(${w.moon.aspect.tone}) · 제${w.moon.house}하우스</p>
     <h3 class="headline">${w.moon.houseInfo.area}</h3>
     <p>${w.moon.houseInfo.text}</p>
-    <p class="note">달은 약 2.5일마다 별자리를 옮깁니다. 앞으로 약 ${Math.max(1, Math.round(w.moon.hoursLeft))}시간 뒤 다음 자리로 넘어갑니다.</p>
+    <p class="note">달은 약 2.5일마다 별자리를 옮깁니다. 오늘의 풀이는 정오의 달 위치를 기준으로 하루 동안 그대로 유지됩니다.</p>
   </section>
 
   <section class="sec two">
@@ -545,6 +545,11 @@ export function scoreBlock(s) {
       <div class="ss east"><span>동양</span><span class="ss-bar"><i style="width:${s.east.score}%"></i></span><b>${s.east.score}</b></div>
       <div class="ss west"><span>서양</span><span class="ss-bar"><i style="width:${s.west.score}%"></i></span><b>${s.west.score}</b></div>
     </div>
+    <figure class="score-word">
+      <blockquote>${esc(s.message.q)}</blockquote>
+      <figcaption>${esc(s.message.src)}</figcaption>
+      <p>${esc(s.message.a)}</p>
+    </figure>
     <details class="score-why">
       <summary>점수가 나온 이유</summary>
       <div class="why-grid">

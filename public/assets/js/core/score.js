@@ -1,5 +1,7 @@
 // 오늘의 점수. 무작위가 아니라 실제로 계산된 요소들을 더하고 빼서 만든다.
 // 각 항목은 { label, detail, delta } 로 남겨 "왜 이 점수인지"를 그대로 보여 준다.
+import { rng } from './seed.js';
+import { SCORE_WORDS } from '../data/score-words.js';
 
 // 동양·서양 모두 가장 나쁜 조합이 50점, 가장 좋은 조합이 100점이 되도록 맞춘 배점표.
 const EAST_BASE = 70;
@@ -70,9 +72,9 @@ const TIERS = [
   // 여러 생년월일·날짜로 본 분포: 90+ 약 5%, 80+ 약 35%, 70+ 약 80%, 62 미만 약 3%
   [90, '아주 좋음', '하고 싶었던 일을 밀어붙여도 좋은 날'],
   [80, '좋음', '흐름이 순한 편이니 한 걸음 더 나가 보세요'],
-  [70, '보통', '무리하지 않으면 무난하게 지나가는 날'],
-  [62, '조심', '서두르지 말고 한 번 더 확인하는 날'],
-  [0, '쉬어 가기', '큰일은 미루고 컨디션을 챙기는 날'],
+  [70, '무난', '평소처럼 지내면 충분히 괜찮은 날'],
+  [62, '천천히', '서두르지만 않으면 괜찮은 날'],
+  [0, '쉬어 가기', '나를 돌보는 데 마음을 쓰기 좋은 날'],
 ];
 
 /** 동서양 종합 */
@@ -81,5 +83,9 @@ export function totalScore(e, w) {
   const west = westScore(w);
   const total = Math.round((east.score + west.score) / 2);
   const [, tier, advice] = TIERS.find(([min]) => total >= min);
-  return { total, tier, advice, east, west };
+  // 같은 사람·같은 날에는 같은 한마디가 나오도록 일진·일주·별자리로 고른다
+  const words = SCORE_WORDS[tier];
+  const r = rng(`score-words|${e.daily.todayPillar.index}|${e.saju.pillars.day.index}|${w.sign.index}|${w.tarot.card.n}`);
+  const message = words[Math.floor(r() * words.length)];
+  return { total, tier, advice, message, east, west };
 }
