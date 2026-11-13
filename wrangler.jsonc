@@ -1,9 +1,14 @@
-// Cloudflare Workers(정적 자산) 배포 설정: npx wrangler deploy
+// Cloudflare Workers 배포 설정. GitHub main 에 push 하면 Cloudflare가 자동으로 배포한다.
+// - public/ 의 정적 파일은 ASSETS 로 서비스
+// - worker/index.js 는 /api/card, /c/:id (공유 카드)만 처리
 {
   "name": "zodigram",
+  "main": "worker/index.js",
   "compatibility_date": "2026-11-01",
   "assets": {
     "directory": "./public",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS"
   }
+  // 공유 카드 보관용 KV. 대시보드에서 만든 네임스페이스 ID를 넣으면 활성화된다.
+  // "kv_namespaces": [{ "binding": "CARDS", "id": "<KV 네임스페이스 ID>" }]
 }

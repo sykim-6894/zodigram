@@ -192,6 +192,33 @@ export function shareCard(card) {
   return Promise.resolve('이미지를 저장했습니다. 주소는 복사해 두었습니다.');
 }
 
+/**
+ * 카드 이미지를 서버(Cloudflare KV)에 30일 동안 올려 두고, 카드를 볼 수 있는 주소를 받는다.
+ * 같은 카드는 한 번만 올린다.
+ */
+export async function uploadCard(card) {
+  if (card.link) return card.link;
+  const res = await fetch('api/card', {
+    method: 'POST',
+    headers: { 'content-type': 'image/png', 'x-card-date': getToday().key },
+    body: card.file,
+  });
+  if (!res.ok) throw new Error(`upload ${res.status}`);
+  const { url } = await res.json();
+  card.link = url;
+  return url;
+}
+
+/** 카드 주소를 공유 창으로 보낸다(카카오톡에서 카드 이미지가 미리보기로 붙는다). */
+export function shareCardLink(link) {
+  if (navigator.share) {
+    return navigator.share({ title: 'Zodigram · 오늘의 운세', text: '오늘의 운세 카드', url: link })
+      .then(() => '공유했습니다.')
+      .catch((e) => (e?.name === 'AbortError' ? '공유를 취소했습니다.' : copyLink(link)));
+  }
+  return copyLink(link);
+}
+
 /** 링크만 공유(미리보기 카드가 붙는다). 공유 창이 없으면 복사. */
 export function shareLink() {
   const link = siteUrl();
@@ -203,7 +230,7 @@ export function shareLink() {
   return copyLink(link);
 }
 
-function copyLink(link) {
+export function copyLink(link) {
   return (navigator.clipboard?.writeText(link) ?? Promise.reject())
     .then(() => '주소를 복사했습니다.')
     .catch(() => link);

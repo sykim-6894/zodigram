@@ -6,7 +6,7 @@ import { lunarToSolar, solarToLunar, formatLunar, LUNAR_MIN_YEAR, LUNAR_MAX_YEAR
 import { MAJOR_ARCANA, SPREAD_POSITIONS } from './data/tarot.js';
 import { hexagramSvg, coinSvg } from './ui/glyphs.js';
 import { getToday } from './core/fortune.js';
-import { prepareCard, shareCard, shareLink, downloadCard } from './ui/share.js';
+import { prepareCard, shareCard, shareLink, downloadCard, uploadCard, shareCardLink, copyLink } from './ui/share.js';
 import * as V from './ui/views.js';
 
 const view = document.getElementById('view');
@@ -110,9 +110,35 @@ function bindShare() {
     status.textContent = '카드를 만들지 못했습니다. 새로 고침 후 다시 시도해 주세요.';
   });
 
-  btn.addEventListener('click', () => {
+  // 카드 공유: 서버에 올려 카드 주소를 만든 뒤, 그 주소를 공유한다(카카오톡 호환).
+  const ready = document.getElementById('shareReady');
+  btn.addEventListener('click', async () => {
     if (!card) return;
-    shareCard(card).then((msg) => { status.textContent = msg; });
+    btn.disabled = true;
+    status.textContent = '공유 링크를 만드는 중…';
+    try {
+      const link = await uploadCard(card);
+      status.textContent = '';
+      ready.hidden = false;
+      ready.innerHTML = V.shareReadyHtml(link);
+      ready.querySelector('#sendLink').addEventListener('click', () => {
+        shareCardLink(link).then((msg) => { status.textContent = msg; });
+      });
+      ready.querySelector('#copyCardLink').addEventListener('click', () => {
+        copyLink(link).then((msg) => { status.textContent = msg; });
+      });
+      ready.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch {
+      // 링크를 만들 수 없으면(오프라인·저장소 미설정) 이미지 파일 공유로 대신한다
+      ready.hidden = false;
+      ready.innerHTML = V.shareFallbackHtml();
+      ready.querySelector('#shareFile').addEventListener('click', () => {
+        shareCard(card).then((msg) => { status.textContent = msg; });
+      });
+      status.textContent = '';
+    } finally {
+      btn.disabled = false;
+    }
   });
   save?.addEventListener('click', () => {
     if (!card) return;

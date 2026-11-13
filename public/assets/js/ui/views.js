@@ -112,6 +112,7 @@ export function homeView(profile) {
       <button class="btn ghost" id="copyLink">링크 공유</button>
       <button class="link-btn" id="saveCard">이미지로 저장</button>
     </div>
+    <div class="share-ready" id="shareReady" hidden></div>
     <p class="share-status" id="shareStatus" aria-live="polite"></p>
     <div class="share-preview" id="sharePreview"></div>
   </section>
@@ -405,7 +406,7 @@ export function meView(profile) {
 export function aboutView() {
   return `<div class="page-head"><h1>Zodigram에 대하여</h1></div>
   <section class="sec">
-    <p>Zodigram(별과 괘)은 서양의 별자리(Zodiac)와 동양의 괘(-gram)를 합친 이름입니다. 서양의 별과 동양의 괘로 하루를 읽어 보는 작은 책력이에요. 모든 계산은 브라우저 안에서 이루어지며 생년월일은 서버로 전송되지 않습니다.</p>
+    <p>Zodigram(별과 괘)은 서양의 별자리(Zodiac)와 동양의 괘(-gram)를 합친 이름입니다. 서양의 별과 동양의 괘로 하루를 읽어 보는 작은 책력이에요. 모든 계산은 브라우저 안에서 이루어지며 생년월일은 서버로 전송되지 않습니다. 운세 카드를 공유할 때만 카드 이미지가 링크용으로 30일 동안 보관된 뒤 자동으로 지워집니다.</p>
   </section>
   <section class="sec two">
     <div>${secHead('동양', '東')}
@@ -498,4 +499,19 @@ export function calendarDetail(c, hasProfile) {
     <p>${c.sonEmpty ? '<b>손 없는 날</b>입니다. 이사나 개업처럼 움직이는 일에 좋다고 여겨 온 날이에요.' : `손이 <b>${c.sonDir}쪽</b>에 있는 날입니다. 그 방향으로의 이사는 예부터 피했습니다.`}</p>
     ${hasProfile && g ? `<h3 class="headline sm">${g.title}</h3><p>${g.text}</p><p class="note">${c.tenGod}의 날 · ${REL_TEXT[c.relation]}</p>` : ''}
   </div>`;
+}
+
+export function shareReadyHtml(link) {
+  return `<p class="kicker">카드 주소가 만들어졌어요. 30일 동안 열어 볼 수 있어요.</p>
+    <input class="share-link" readonly value="${esc(link)}" aria-label="카드 주소" onclick="this.select()">
+    <div class="share-row">
+      <button class="btn" id="sendLink">카카오톡 등으로 보내기</button>
+      <button class="btn ghost" id="copyCardLink">주소 복사</button>
+      <a class="link-btn" href="${esc(link)}" target="_blank" rel="noopener">카드 페이지 열기</a>
+    </div>`;
+}
+
+export function shareFallbackHtml() {
+  return `<p class="kicker">지금은 카드 주소를 만들 수 없어요. 이미지로 바로 보내거나 저장해 주세요.</p>
+    <div class="share-row"><button class="btn" id="shareFile">이미지로 공유</button></div>`;
 }
