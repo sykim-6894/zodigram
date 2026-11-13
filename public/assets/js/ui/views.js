@@ -1,9 +1,11 @@
 // 화면 템플릿. 각 함수는 HTML 문자열을 반환하고, 이벤트 연결은 app.js가 맡는다.
 import { getToday, getEast, getWest, getDailyHexagram, getScore } from '../core/fortune.js';
 import { monthCalendar } from '../core/almanac.js';
-import { STEMS_KO, BRANCHES_KO, STEMS, BRANCHES, ELEMENTS, ELEMENTS_HANJA, STEM_ELEMENT, BRANCH_ELEMENT, tenGod, BRANCH_MAIN_STEM } from '../core/saju.js';
+import { solarTermsOfYear } from '../core/astro.js';
+import { STEMS_KO, BRANCHES_KO, STEMS, BRANCHES, ELEMENTS, ELEMENTS_HANJA, STEM_ELEMENT, BRANCH_ELEMENT, tenGod, BRANCH_MAIN_STEM, computeSaju } from '../core/saju.js';
 import { TRIGRAMS } from '../data/iching.js';
 import { PLACES, j } from '../data/astrology.js';
+import { dstRanges } from '../core/koreatime.js';
 import { natalChart, readPlacement, dailyTransits } from '../core/natal.js';
 import { chartWheel } from './chart.js';
 import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
@@ -12,6 +14,16 @@ import { glyph, roman, hexagramSvg } from './glyphs.js';
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const EL_CLASS = ['el-wood', 'el-fire', 'el-earth', 'el-metal', 'el-water'];
+
+/** 시각 보정 안내 문장 */
+function timeNote(t, hasTime) {
+  if (!hasTime) return '태어난 시각을 모르면 시주 없이 세 기둥으로 봅니다.';
+  const parts = [];
+  if (t.dst) parts.push('서머타임 기간이라 한 시간을 빼고');
+  if (t.standard !== 9) parts.push(`당시 표준시(UTC+${t.standard === 8.5 ? '8:30' : '8:28'})로 고쳐`);
+  parts.push(`${t.place.name}의 태양시 ${t.solarTime.text}${t.solarTime.dayShift < 0 ? '(전날)' : t.solarTime.dayShift > 0 ? '(다음 날)' : ''}로 시주를 정했습니다.`);
+  return parts.join(' ');
+}
 
 /** 사주·별자리 화면에 쓰는 생일 표기. 음력으로 입력했으면 양력을 괄호로 함께 보여 준다. */
 function birthLabel(p) {
@@ -186,7 +198,7 @@ export function eastView(profile) {
       ${pillarCell('월주', pillars.month, ds)}
       ${pillarCell('연주', pillars.year, ds)}
     </div>
-    <p class="note">${birthLabel(profile)}${e.saju.hasTime ? ` ${profile.hour}시 ${profile.minute || 0}분` : ''} 기준. 시주는 한국 표준시에서 30분을 보정한 진태양시로 계산했습니다.</p>
+    <p class="note">${birthLabel(profile)}${e.saju.hasTime ? ` ${profile.hour}시 ${profile.minute || 0}분` : ''} 기준. ${timeNote(e.saju.time, e.saju.hasTime)} <a href="#/manse">만세력에서 보기</a></p>
   </section>
 
   <section class="sec two">
@@ -427,7 +439,8 @@ export function aboutView() {
   <section class="sec two">
     <div>${secHead('동양', '東')}
       <ul class="plain">
-        <li><b>사주</b> — 연주는 입춘, 월주는 12절기(태양 황경)로 나눕니다. 시주는 서울 경도에 맞춰 30분 보정합니다.</li>
+        <li><b>사주</b> — 연주는 입춘, 월주는 12절기의 절입 시각(태양 황경)으로 나눕니다. 태어난 시각은 당시 표준시(1908~1961년의 UTC+8:30 시기 포함)와 서머타임(1948~51, 1955~60, 1987~88)을 바로잡은 뒤, 태어난 곳 경도의 태양시로 시주를 정합니다.</li>
+        <li><b>만세력</b> — 1900~2100년 어느 날짜·시각이든 네 기둥, 음력, 절기 구간을 조회할 수 있습니다.</li>
         <li><b>일진</b> — 오늘의 천간이 내 일간에게 어떤 십신인지로 하루의 성격을 봅니다.</li>
         <li><b>띠</b> — 오늘의 지지와 내 띠의 합·충·해 관계를 봅니다.</li>
         <li><b>주역</b> — 동전 세 개를 여섯 번 던지는 척전법을 씁니다.</li>
@@ -490,6 +503,7 @@ export function calendarView(profile, ym, selected) {
     <button class="icon-btn" id="calNext" aria-label="다음 달">›</button>
     <button class="btn ghost sm" id="calToday">오늘</button>
   </div>
+  ${monthPillarLine(ym.year, ym.month)}
   <div class="cal" role="grid">
     ${WEEK.map((w, i) => `<div class="cal-wd${i === 0 ? ' red' : i === 6 ? ' sat' : ''}">${w}</div>`).join('')}
     ${cells}
@@ -591,7 +605,7 @@ function natalSection(profile) {
       <div class="natal-wheel">${chartWheel(n)}</div>
       <div>
         <table class="ptable"><thead><tr><th></th><th>천체</th><th>별자리</th><th>도</th><th>하우스</th></tr></thead><tbody>${rows}</tbody></table>
-        <p class="note">${n.hasTime ? `${n.place.name}에서 ${profile.hour}시 ${profile.minute || 0}분에 태어난 하늘입니다.${n.offset === 10 ? ' 서머타임 기간이라 한 시간을 보정했습니다.' : ''}` : '태어난 시각을 입력하면 상승궁과 하우스까지 볼 수 있어요.'}${n.moonUncertain ? ' 시각을 몰라 정오 기준으로 계산했는데, 그날 달이 별자리를 옮겼을 수 있어요.' : ''}</p>
+        <p class="note">${n.hasTime ? `${n.place.name}에서 ${profile.hour}시 ${profile.minute || 0}분에 태어난 하늘입니다.${n.dst ? ' 서머타임 기간이라 한 시간을 보정했습니다.' : ''}` : '태어난 시각을 입력하면 상승궁과 하우스까지 볼 수 있어요.'}${n.moonUncertain ? ' 시각을 몰라 정오 기준으로 계산했는데, 그날 달이 별자리를 옮겼을 수 있어요.' : ''}</p>
       </div>
     </div>
     <div class="sec-inner two">
@@ -625,4 +639,80 @@ function transitSection(profile) {
     : '<p>오늘은 내 차트와 크게 부딪히거나 맞물리는 행성이 없는 조용한 날이에요.</p>'}
     <p class="note">오늘 정오의 행성 위치가 태어날 때의 행성과 이루는 각입니다. 오차가 작은 순서로 보여 줍니다.</p>
   </section>`;
+}
+
+/* ───────── 만세력 ───────── */
+export function manseView(state) {
+  const { calendar, date, ly, lm, ld, leap, time, place } = state;
+  const opts = (n, sel) => Array.from({ length: n }, (_, i) => `<option value="${i + 1}"${sel === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('');
+  const isLunar = calendar === 'lunar';
+  return `<div class="page-head east">${sideLabel('east')}<h1>만세력</h1></div>
+  <form class="form manse-form" id="manseForm" autocomplete="off" novalidate>
+    <div class="seg" role="radiogroup" aria-label="달력 종류">
+      <label><input type="radio" name="calendar" value="solar" ${isLunar ? '' : 'checked'}><span>양력</span></label>
+      <label><input type="radio" name="calendar" value="lunar" ${isLunar ? 'checked' : ''}><span>음력</span></label>
+    </div>
+    <div class="manse-row">
+      <div data-cal="solar" ${isLunar ? 'hidden' : ''}><input name="date" type="date" min="1900-01-01" max="2100-12-31" value="${date}" aria-label="양력 날짜"></div>
+      <div data-cal="lunar" ${isLunar ? '' : 'hidden'}>
+        <div class="ymd">
+          <label><input name="ly" type="number" inputmode="numeric" min="1900" max="2100" value="${ly}" aria-label="음력 연도"><span>년</span></label>
+          <label><select name="lm" aria-label="음력 월">${opts(12, lm)}</select><span>월</span></label>
+          <label><select name="ld" aria-label="음력 일">${opts(30, ld)}</select><span>일</span></label>
+        </div>
+        <label class="check"><input type="checkbox" name="leap" ${leap ? 'checked' : ''}> 윤달</label>
+      </div>
+      <label class="field"><span>시각</span><input name="time" type="time" value="${time}"></label>
+      <label class="field"><span>장소</span><select name="place">${PLACES.map(([n]) => `<option${place === n ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+    </div>
+    <div class="row"><button class="btn ghost sm" type="button" id="manseNow">지금</button></div>
+  </form>
+  <div id="manseOut"></div>`;
+}
+
+export function manseResult(r) {
+  if (r.error) return `<p class="conv err">${esc(r.error)}</p>`;
+  const s = r.saju;
+  const t = s.time;
+  const ds = s.dayMaster;
+  const rows = [
+    ['양력', `${r.solar.year}년 ${r.solar.month}월 ${r.solar.day}일 ${WEEK[r.weekday]}요일${s.hasTime ? ` ${r.timeText}` : ''}`],
+    ['음력', `${r.lunar.year}년 ${r.lunar.leap ? '윤' : ''}${r.lunar.month}월 ${r.lunar.day}일 (${r.lunar.monthDays === 30 ? '큰달' : '작은달'})`],
+    ['띠', `${ANIMALS_KO[s.zodiacAnimal]}띠 (${s.pillars.year.hanja}년)`],
+    ['절기', `${r.term.from.name} ${r.term.from.text}부터 ${r.term.to.name} ${r.term.to.text} 전까지 ${s.pillars.month.hanja}월`],
+    ['태양 황경', `${t.sunLon.toFixed(2)}°`],
+  ];
+  if (s.hasTime) {
+    rows.push(['시각 보정', `UTC+${fmtOffset(t.offset)}${t.dst ? ' (서머타임)' : ''} → ${t.place.name} 태양시 ${t.solarTime.text}${t.solarTime.dayShift < 0 ? ' (전날)' : t.solarTime.dayShift > 0 ? ' (다음 날)' : ''}`]);
+  }
+  return `<section class="sec">
+    <div class="pillars">
+      ${pillarCell('시주', s.pillars.hour, ds)}
+      ${pillarCell('일주', s.pillars.day, ds, true)}
+      ${pillarCell('월주', s.pillars.month, ds)}
+      ${pillarCell('연주', s.pillars.year, ds)}
+    </div>
+    <dl class="manse-info">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+    <ul class="bars manse-bars">
+      ${s.counts.map((c, i) => `<li><span class="b-label ${EL_CLASS[i]}">${ELEMENTS_HANJA[i]} ${ELEMENTS[i]}</span><span class="b-track"><span class="b-fill ${EL_CLASS[i]}" style="width:${(c / 8) * 100}%"></span></span><span class="b-num">${c}</span></li>`).join('')}
+    </ul>
+    <p class="note">연주는 입춘, 월주는 절입 시각, 시주는 장소의 태양시(경도 보정)로 정합니다. 1908년 이후 한국 표준시 변경과 서머타임(${dstRanges().length}회)을 반영합니다. 절기 시각은 한국 표준시 기준입니다.</p>
+  </section>`;
+}
+
+const ANIMALS_KO = ['쥐', '소', '호랑이', '토끼', '용', '뱀', '말', '양', '원숭이', '닭', '개', '돼지'];
+function fmtOffset(o) {
+  const h = Math.floor(o);
+  const m = Math.round((o - h) * 60);
+  return m ? `${h}:${String(m).padStart(2, '0')}` : `${h}`;
+}
+
+/** 달력 머리: 이 달의 월건과 절입 시각 */
+function monthPillarLine(y, m) {
+  const jie = solarTermsOfYear(y)[m - 1];
+  const before = computeSaju({ year: y, month: m, day: 1, hour: 12, minute: 0 }).pillars;
+  const after = computeSaju({ year: y, month: m, day: jie.day, hour: 23, minute: 59 }).pillars;
+  const hm = `${String(jie.hour).padStart(2, '0')}:${String(jie.minute).padStart(2, '0')}`;
+  const yearText = before.year.index === after.year.index ? `${after.year.hanja}년` : `${before.year.hanja}년 → ${after.year.hanja}년`;
+  return `<p class="cal-ganji"><span>${yearText}</span><span>${before.month.hanja}월 → <b>${jie.name} ${m}.${jie.day} ${hm}</b>부터 ${after.month.hanja}월</span><a href="#/manse">만세력</a></p>`;
 }

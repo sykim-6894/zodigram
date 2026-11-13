@@ -6,6 +6,7 @@ import { lunarToSolar, solarToLunar, formatLunar, LUNAR_MIN_YEAR, LUNAR_MAX_YEAR
 import { MAJOR_ARCANA, SPREAD_POSITIONS } from './data/tarot.js';
 import { hexagramSvg, coinSvg } from './ui/glyphs.js';
 import { getToday } from './core/fortune.js';
+import { manseLookup } from './core/manse.js';
 import { prepareCard, shareCard, shareLink, downloadCard, uploadCard, shareCardLink, copyLink } from './ui/share.js';
 import * as V from './ui/views.js';
 
@@ -15,6 +16,18 @@ const view = document.getElementById('view');
 const nowKst = getToday().date;
 const cal = { year: nowKst.year, month: nowKst.month, sel: nowKst.day };
 
+// 만세력 입력 상태(처음엔 지금 시각)
+const pad = (n) => String(n).padStart(2, '0');
+function nowManse() {
+  const t = getToday().date;
+  const l = solarToLunar(t.year, t.month, t.day);
+  return {
+    calendar: 'solar', date: `${t.year}-${pad(t.month)}-${pad(t.day)}`, ly: l.year, lm: l.month, ld: l.day, leap: l.leap,
+    time: `${pad(t.hour)}:${pad(t.minute)}`, place: loadProfile()?.place || '서울',
+  };
+}
+let manse = nowManse();
+
 const routes = {
   '/': () => V.homeView(loadProfile()),
   '/east': () => V.eastView(loadProfile()),
@@ -22,6 +35,7 @@ const routes = {
   '/west': () => V.westView(loadProfile()),
   '/west/tarot': () => V.tarotView(),
   '/calendar': () => V.calendarView(loadProfile(), cal, cal.sel),
+  '/manse': () => V.manseView(manse),
   '/me': () => V.meView(loadProfile()),
   '/about': () => V.aboutView(),
 };
@@ -31,6 +45,7 @@ const binders = {
   '/east/iching': bindIching,
   '/west/tarot': bindTarot,
   '/calendar': bindCalendar,
+  '/manse': bindManse,
   '/': bindShare,
 };
 
@@ -148,6 +163,37 @@ function bindShare() {
   document.getElementById('copyLink')?.addEventListener('click', () => {
     shareLink().then((msg) => { status.textContent = msg; });
   });
+}
+
+/* 만세력 */
+function bindManse() {
+  const form = document.getElementById('manseForm');
+  const out = document.getElementById('manseOut');
+  const el = form.elements;
+  let last = null;
+  const update = (ev) => {
+    // 양력↔음력을 바꾸면 지금 보고 있는 날짜를 그대로 옮겨 적는다
+    if (ev?.target?.name === 'calendar' && last && !last.error) {
+      if (el.calendar.value === 'lunar') {
+        el.ly.value = last.lunar.year; el.lm.value = last.lunar.month; el.ld.value = last.lunar.day; el.leap.checked = last.lunar.leap;
+      } else {
+        el.date.value = `${last.solar.year}-${pad(last.solar.month)}-${pad(last.solar.day)}`;
+      }
+    }
+    manse = {
+      calendar: el.calendar.value, date: el.date.value,
+      ly: Number(el.ly.value), lm: Number(el.lm.value), ld: Number(el.ld.value), leap: el.leap.checked,
+      time: el.time.value, place: el.place.value,
+    };
+    form.querySelector('[data-cal="solar"]').hidden = manse.calendar === 'lunar';
+    form.querySelector('[data-cal="lunar"]').hidden = manse.calendar !== 'lunar';
+    last = manseLookup(manse);
+    out.innerHTML = V.manseResult(last);
+  };
+  form.addEventListener('input', update);
+  form.addEventListener('change', update);
+  document.getElementById('manseNow').addEventListener('click', () => { manse = nowManse(); render(); });
+  update();
 }
 
 /* 내 정보 */

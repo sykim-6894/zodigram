@@ -1,29 +1,18 @@
 // 출생 차트(네이탈 차트)와 오늘의 행성 각.
 // - 하우스: 상승궁이 든 별자리를 1하우스로 두는 홀 사인(Whole Sign) 방식
 // - 태어난 시각: 한국 표준시. 1912년 이전과 1954-03-21 ~ 1961-08-09 는 UTC+8:30,
-//   1987·1988년 여름 서머타임(한 시간 빠름)은 보정한다.
-import { jdn, julianDate } from './astro.js';
+//   서머타임(1948~51, 1955~60, 1987~88)은 보정한다(core/koreatime.js).
+import { julianDate } from './astro.js';
+import { koreaUtcOffset, placeOf } from './koreatime.js';
 import { planetLongitude, isRetrograde, angles, PLANET_ORDER } from './planets.js';
 import { SIGNS, HOUSES } from '../data/western.js';
-import { PLANETS, SIGN_STYLE, ELEMENT_TEXT, ASPECT_KINDS, PLACES, j } from '../data/astrology.js';
+import { PLANETS, SIGN_STYLE, ELEMENT_TEXT, ASPECT_KINDS, j } from '../data/astrology.js';
 
 const norm = (x) => ((x % 360) + 360) % 360;
 
-/** 한국에서 태어난 시각의 UTC 오프셋(시간) */
+/** 한국에서 태어난 시각의 UTC 오프셋(시간). 표준시 변천과 서머타임 반영 */
 export function koreaBirthOffset(y, m, d, h = 12, min = 0) {
-  const day = jdn(y, m, d);
-  if (day < jdn(1912, 1, 1) || (day >= jdn(1954, 3, 21) && day < jdn(1961, 8, 10))) return 8.5;
-  const t = day + (h * 60 + min) / 1440;
-  const dst = [
-    [jdn(1987, 5, 10) + 2 / 24, jdn(1987, 10, 11) + 3 / 24],
-    [jdn(1988, 5, 8) + 2 / 24, jdn(1988, 10, 9) + 3 / 24],
-  ];
-  return dst.some(([a, b]) => t >= a && t < b) ? 10 : 9;
-}
-
-export function placeOf(name) {
-  const p = PLACES.find(([n]) => n === name) || PLACES[0];
-  return { name: p[0], lat: p[1], lon: p[2] };
+  return koreaUtcOffset(y, m, d, h, min).offset;
 }
 
 function position(key, lon, retro = false) {
@@ -36,7 +25,7 @@ export function natalChart(profile) {
   const hasTime = profile.hour !== null && profile.hour !== undefined && profile.hour !== '';
   const h = hasTime ? Number(profile.hour) : 12;
   const mi = hasTime ? Number(profile.minute || 0) : 0;
-  const offset = koreaBirthOffset(profile.year, profile.month, profile.day, h, mi);
+  const { offset, dst } = koreaUtcOffset(profile.year, profile.month, profile.day, h, mi);
   const jd = julianDate(profile.year, profile.month, profile.day, h, mi, offset);
   const place = placeOf(profile.place);
 
@@ -62,7 +51,7 @@ export function natalChart(profile) {
   const moonUncertain = !hasTime && (moon.degree < 6.6 || moon.degree > 23.4);
 
   return {
-    hasTime, place, offset, jd, planets, asc, mc, elements, dominant, lacking, moonUncertain,
+    hasTime, place, offset, dst, jd, planets, asc, mc, elements, dominant, lacking, moonUncertain,
     summary: ELEMENT_TEXT[dominant].strong,
     lackText: lacking ? ELEMENT_TEXT[lacking].weak : null,
   };

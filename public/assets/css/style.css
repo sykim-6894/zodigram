@@ -531,3 +531,21 @@ fieldset.field legend { padding: 0; font-size: 13.5px; color: var(--ink-2); marg
 .transits li.hard { border-left-color: var(--east); }
 .transits li.strong { border-left-color: var(--west); }
 .transits .kicker { margin: 0; }
+
+/* ── 만세력 ── */
+.manse-form { max-width: none; padding-bottom: 8px; }
+.manse-row { display: grid; gap: 0 16px; margin-top: 8px; }
+@media (min-width: 760px) { .manse-row { grid-template-columns: 1.4fr 1fr 1fr; align-items: end; } .manse-row .field { margin-bottom: 0; } }
+.manse-row [data-cal] { margin-bottom: 18px; }
+@media (min-width: 760px) { .manse-row [data-cal] { margin-bottom: 0; } }
+.manse-row [data-cal] .check { margin-top: 8px; }
+.manse-form .row { margin-top: 14px; }
+.manse-form .btn.sm { margin-left: 0; }
+.manse-info { margin: 18px 0 16px; max-width: 640px; }
+.manse-info div { display: grid; grid-template-columns: 84px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.manse-info dt { color: var(--ink-3); font-size: 13.5px; }
+.manse-info dd { margin: 0; font-variant-numeric: tabular-nums; }
+.manse-bars { max-width: 420px; }
+.cal-ganji { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: -4px 0 12px; font: 400 14.5px/1.5 var(--serif); color: var(--ink-2); }
+.cal-ganji b { font-weight: 600; color: var(--ink); }
+.cal-ganji a { margin-left: auto; font: 14px var(--sans); color: var(--east); }

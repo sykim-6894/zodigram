@@ -2,8 +2,11 @@
 // - 연주: 입춘 기준으로 해가 바뀜
 // - 월주: 태양 황경(12절) 기준
 // - 일주: 율리우스 일수로 60갑자 계산 (2000-01-01 = 戊午)
-// - 시주: 한국 표준시에서 30분 늦춘 진태양시 근사 (자시 23:30~01:30), 자시부터 다음 날로 본다
+// - 시각 보정: 그 시절의 표준시(UTC+8:30 시기 포함)와 서머타임을 빼서 실제 시각을 구하고,
+//   태어난 곳의 경도로 지방평균태양시를 구해 시주를 정한다(서울은 한국 표준시보다 약 32분 늦음).
+// - 자시(子時, 태양시 23시~1시)부터 다음 날로 본다
 import { jdn, julianDate, sunLongitude } from './astro.js';
+import { koreaUtcOffset, placeOf } from './koreatime.js';
 
 export const STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 export const STEMS_KO = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
@@ -41,40 +44,47 @@ export function dayPillar(year, month, day) {
   return pillar(((jdn(year, month, day) + 49) % 60 + 60) % 60);
 }
 
-/** 시각 → 시지 인덱스(0=子). 30분 보정 적용. */
-export function hourBranch(hour, minute) {
-  const m = (hour * 60 + minute - 30 + 1440) % 1440; // 진태양시 근사
-  return Math.floor(((m + 60) % 1440) / 120);
+/** 태양시(분) → 시지 인덱스(0=子, 23시~1시) */
+export function hourBranchFromSolar(solarMinutes) {
+  return Math.floor((((solarMinutes + 60) % 1440) + 1440) % 1440 / 120);
 }
+
+const mod60 = (n) => ((n % 60) + 60) % 60;
+const hhmm = (mins) => `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(Math.round(mins % 60)).padStart(2, '0')}`;
 
 /**
  * 사주 계산
- * @param {{year:number, month:number, day:number, hour?:number|null, minute?:number}} b
+ * @param {{year:number, month:number, day:number, hour?:number|null, minute?:number, place?:string}} b
  */
 export function computeSaju(b) {
   const hasTime = b.hour !== null && b.hour !== undefined && b.hour !== '';
   const hour = hasTime ? Number(b.hour) : 12;
   const minute = hasTime ? Number(b.minute || 0) : 0;
+  const place = placeOf(b.place);
+  const { offset, dst, standard } = koreaUtcOffset(b.year, b.month, b.day, hour, minute);
 
-  // 월·연: 태양 황경으로 판단
-  const jd = julianDate(b.year, b.month, b.day, hour, minute, 9);
+  // 월·연: 실제 순간(UTC)의 태양 황경으로 판단
+  const jd = julianDate(b.year, b.month, b.day, hour, minute, offset);
   const lon = sunLongitude(jd);
   const monthIdx = Math.floor((((lon - 315) % 360) + 360) % 360 / 30); // 0 = 寅월
   let sajuYear = b.year;
   if (b.month <= 2 && monthIdx >= 10) sajuYear -= 1;
-  const yearP = pillar(((sajuYear - 4) % 60 + 60) % 60);
+  const yearP = pillar(mod60(sajuYear - 4));
   const monthStem = (yearP.stem * 2 + 2 + monthIdx) % 10;
   const monthP = fromStemBranch(monthStem, (monthIdx + 2) % 12);
 
-  // 일: 자시(23:30) 이후는 다음 날로
   let dayP = dayPillar(b.year, b.month, b.day);
   let hourP = null;
+  let solarTime = null;
   if (hasTime) {
-    const hb = hourBranch(hour, minute);
-    const mins = hour * 60 + minute;
-    if (mins >= 23 * 60 + 30) dayP = pillar((dayP.index + 1) % 60);
-    const hs = (dayP.stem * 2 + hb) % 10;
-    hourP = fromStemBranch(hs, hb);
+    // 지방평균태양시 = UTC + 경도/15시간
+    let solar = hour * 60 + minute - offset * 60 + place.lon * 4;
+    const shift = Math.floor(solar / 1440);
+    solar -= shift * 1440;
+    const hb = hourBranchFromSolar(solar);
+    dayP = pillar(mod60(dayP.index + shift + (solar >= 23 * 60 ? 1 : 0)));
+    hourP = fromStemBranch((dayP.stem * 2 + hb) % 10, hb);
+    solarTime = { minutes: solar, text: hhmm(solar), dayShift: shift };
   }
 
   const pillars = { year: yearP, month: monthP, day: dayP, hour: hourP };
@@ -84,7 +94,10 @@ export function computeSaju(b) {
     counts[STEM_ELEMENT[p.stem]]++;
     counts[BRANCH_ELEMENT[p.branch]]++;
   }
-  return { pillars, counts, dayMaster: dayP.stem, zodiacAnimal: yearP.branch, hasTime };
+  return {
+    pillars, counts, dayMaster: dayP.stem, zodiacAnimal: yearP.branch, hasTime,
+    time: { offset, dst, standard, place, solarTime, sunLon: lon, jd },
+  };
 }
 
 const TEN_GODS = [

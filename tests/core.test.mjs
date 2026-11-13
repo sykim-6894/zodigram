@@ -223,3 +223,44 @@ test('출생 차트: 하우스·원소·서머타임', () => {
   assert.ok(t.aspects.length <= 4 && t.today.length === 7);
   for (let i = 1; i < t.aspects.length; i++) assert.ok(t.aspects[i - 1].orb <= t.aspects[i].orb);
 });
+
+import { koreaUtcOffset } from '../public/assets/js/core/koreatime.js';
+import { manseLookup } from '../public/assets/js/core/manse.js';
+
+test('한국 표준시·서머타임 역사', () => {
+  assert.equal(koreaUtcOffset(1988, 7, 1, 10, 0).offset, 10);
+  assert.equal(koreaUtcOffset(1988, 5, 8, 1, 59).dst, false);
+  assert.equal(koreaUtcOffset(1987, 10, 11, 2, 30).dst, true);
+  assert.equal(koreaUtcOffset(1987, 10, 11, 3, 30).dst, false);
+  assert.equal(koreaUtcOffset(1958, 7, 1).offset, 9.5);
+  assert.equal(koreaUtcOffset(1950, 8, 1).offset, 10);
+  assert.equal(koreaUtcOffset(1930, 6, 1).offset, 9);
+  assert.equal(koreaUtcOffset(2026, 7, 1).offset, 9);
+});
+
+test('사주 시각 보정: 서머타임과 출생지 태양시', () => {
+  // 1988-07-01 10:00(서머타임) → 실제 09:00 → 서울 태양시 08:28 → 辰시
+  const a = computeSaju({ year: 1988, month: 7, day: 1, hour: 10, minute: 0, place: '서울' });
+  assert.equal(a.pillars.hour.branch, 4);
+  assert.equal(a.time.dst, true);
+  // 1988-07-01 00:20(서머타임) → 전날 22:48 亥시
+  const b = computeSaju({ year: 1988, month: 7, day: 1, hour: 0, minute: 20, place: '서울' });
+  assert.equal(b.pillars.hour.branch, 11);
+  assert.equal(b.pillars.day.hanja, '丙辰');
+  // 평상시 서울은 한국 표준시보다 약 32분 늦다
+  assert.equal(computeSaju({ year: 2000, month: 3, day: 1, hour: 7, minute: 20, place: '서울' }).time.solarTime.text, '06:48');
+});
+
+test('만세력 조회: 입춘 직전·직후, 음력 입력, 절기 구간', () => {
+  const before = manseLookup({ calendar: 'solar', date: '2026-02-04', time: '04:00' });
+  const after = manseLookup({ calendar: 'solar', date: '2026-02-04', time: '06:00' });
+  assert.equal(before.saju.pillars.year.hanja, '乙巳');
+  assert.equal(after.saju.pillars.year.hanja, '丙午');
+  assert.equal(after.saju.pillars.month.hanja, '庚寅');
+  const l = manseLookup({ calendar: 'lunar', ly: 1990, lm: 4, ld: 21, time: '10:30' });
+  assert.deepEqual([l.solar.year, l.solar.month, l.solar.day], [1990, 5, 15]);
+  const n = manseLookup({ calendar: 'solar', date: '2026-11-13', time: '14:30' });
+  assert.equal(n.term.from.name, '입동');
+  assert.equal(n.term.to.name, '대설');
+  assert.ok(manseLookup({ calendar: 'lunar', ly: 2026, lm: 6, ld: 1, leap: true }).error);
+});
