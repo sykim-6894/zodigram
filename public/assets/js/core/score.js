@@ -1,6 +1,5 @@
 // 오늘의 점수. 무작위가 아니라 실제로 계산된 요소들을 더하고 빼서 만든다.
 // 각 항목은 { label, detail, delta } 로 남겨 "왜 이 점수인지"를 그대로 보여 준다.
-import { SCORE_WORDS } from '../data/score-words.js';
 
 // 동양·서양 모두 가장 나쁜 조합이 50점, 가장 좋은 조합이 100점이 되도록 맞춘 배점표.
 const EAST_BASE = 70;
@@ -76,21 +75,14 @@ const TIERS = [
   [0, '쉬어 가기', '나를 돌보는 데 마음을 쓰기 좋은 날'],
 ];
 
-/**
- * 동서양 종합.
- * @param avoid 같은 화면에 이미 보이는 문장들(오늘의 한마디 등). 겹치면 다음 문장을 쓴다.
- * @param seq   한마디 순번. fortune.getScore 가 "같은 등급이 나온 날의 순서"를 넘겨 등급 안에서 차례로 쓰게 한다.
- */
-export function totalScore(e, w, avoid = [], seq = e.daily.dayNumber) {
+// 등급 → 한마디·조언의 분위기 (g 나아가기 · s 꾸준히 · c 위로)
+export const TIER_TONE = { '아주 좋음': 'g', 좋음: 'g', 무난: 's', 천천히: 'c', '쉬어 가기': 'c' };
+
+/** 동서양 종합 점수와 등급 */
+export function totalScore(e, w) {
   const east = eastScore(e);
   const west = westScore(w);
   const total = Math.round((east.score + west.score) / 2);
   const [, tier, advice] = TIERS.find(([min]) => total >= min);
-  // 같은 등급의 날마다 다음 문장으로 넘어가므로 목록을 다 돌기 전엔 겹치지 않는다.
-  // 사람마다 시작 위치를 달리해 같은 날 다른 사람과도 덜 겹치게 한다.
-  const words = SCORE_WORDS[tier];
-  const offset = e.saju.pillars.day.index * 7 + w.sign.index * 5;
-  let idx = (seq + offset) % words.length;
-  for (let i = 0; i < words.length && avoid.includes(words[idx].q); i++) idx = (idx + 1) % words.length;
-  return { total, tier, advice, message: words[idx], east, west };
+  return { total, tier, tone: TIER_TONE[tier], advice, east, west };
 }

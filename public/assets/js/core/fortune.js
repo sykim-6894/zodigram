@@ -8,6 +8,7 @@ import { MAJOR_ARCANA } from '../data/tarot.js';
 import { HEXAGRAMS } from '../data/iching.js';
 import { EAST_QUOTES, WEST_QUOTES } from '../data/quotes.js';
 import { totalScore } from './score.js';
+import { OPENERS, ACTIONS } from '../data/advice.js';
 import { DAY_MASTER, TEN_GOD_DAY, RELATION_TEXT, ELEMENT_INFO, ZODIAC_ANIMAL_DAY, ANIMAL_TRAIT } from '../data/saju-text.js';
 
 const birthKey = (p) => `${p.year}-${p.month}-${p.day}-${p.hour ?? 'x'}`;
@@ -78,33 +79,68 @@ export function getWest(profile, now = new Date()) {
 
 export { julianDate };
 
-/* ───────── 오늘의 점수 ───────── */
-const BLOCK = 64; // 64일 단위로 순번을 센다
-const tierCache = new Map();
+/* ───────── 오늘의 점수와 한마디 ───────── */
+const YEAR = 365;
+const toneCache = new Map();
 const jdnToNoonKst = (d) => new Date(((d - 0.5) - 2440587.5) * 86400000 + 3 * 3600000);
+const FALLBACK = { g: ['g', 's', 'c'], s: ['s', 'c', 'g'], c: ['c', 's', 'g'] };
 
-function tierOn(profile, d) {
+function toneOn(profile, d) {
   const key = `${birthKey(profile)}|${d}`;
-  if (!tierCache.has(key)) {
+  if (!toneCache.has(key)) {
     const at = jdnToNoonKst(d);
-    tierCache.set(key, totalScore(getEast(profile, at), getWest(profile, at)).tier);
+    toneCache.set(key, totalScore(getEast(profile, at), getWest(profile, at)).tone);
   }
-  return tierCache.get(key);
+  return toneCache.get(key);
 }
 
 /**
- * 오늘의 종합 점수와 한마디.
- * 한마디는 "이번 64일 안에서 같은 등급이 나온 몇 번째 날인지"를 순번으로 써서,
- * 같은 등급이 다시 나와도 목록을 다 돌기 전에는 같은 문장이 반복되지 않게 한다.
+ * 1년(365일) 단위로 날마다 한마디를 하나씩 배정한다.
+ * - 그날 점수의 분위기에 맞는 문장 가운데 아직 안 쓴 것을 차례로 쓴다.
+ * - 그 분위기의 문장을 다 쓰면 가까운 분위기의 안 쓴 문장을 빌려 쓴다.
+ * 그래서 목록 전체를 다 쓰기 전에는 같은 문장이 다시 나오지 않는다.
+ */
+function assignYear(list, tones, offset) {
+  const byTone = { g: [], s: [], c: [] };
+  list.forEach((q) => byTone[q.tone].push(q));
+  for (const t of 'gsc') {
+    const arr = byTone[t];
+    const k = arr.length ? offset % arr.length : 0;
+    byTone[t] = arr.slice(k).concat(arr.slice(0, k)); // 사람마다 시작 위치를 다르게
+  }
+  const next = { g: 0, s: 0, c: 0 };
+  return tones.map((tone) => {
+    for (let round = 0; round < 2; round++) {
+      for (const t of FALLBACK[tone]) {
+        if (next[t] < byTone[t].length) return byTone[t][next[t]++];
+      }
+      next.g = next.s = next.c = 0; // 목록을 다 썼으면 처음부터
+    }
+    return list[0];
+  });
+}
+
+/**
+ * 오늘의 점수, 그 점수에 어울리는 동양·서양 한마디와 조언.
+ * 같은 분위기의 날이 올 때마다 다음 문장·다음 조언으로 넘어가 1년 안에는 겹치지 않는다.
  */
 export function getScore(profile, now = new Date()) {
   const today = getToday(now);
   const e = getEast(profile, now);
   const w = getWest(profile, now);
-  const tier = totalScore(e, w).tier;
+  const score = totalScore(e, w);
   const day = today.dayNumber;
-  const block = Math.floor(day / BLOCK);
-  let ordinal = 0;
-  for (let d = block * BLOCK; d < day; d++) if (tierOn(profile, d) === tier) ordinal++;
-  return { score: totalScore(e, w, [today.eastQuote.text, today.westQuote.text], ordinal + block * 3), east: e, west: w };
+  const start = Math.floor(day / YEAR) * YEAR;
+  const tones = [];
+  for (let d = start; d < day; d++) tones.push(toneOn(profile, d));
+  tones.push(score.tone);
+  const offset = e.saju.pillars.day.index * 7 + w.sign.index * 13;
+  const east = assignYear(EAST_QUOTES, tones, offset).at(-1);
+  const west = assignYear(WEST_QUOTES, tones, offset * 3 + 5).at(-1);
+  // 조언: 같은 분위기 날의 순번 i 로 (여는 말, 해 볼 일) 400가지 조합을 차례로 쓴다
+  const i = tones.filter((t) => t === score.tone).length - 1 + offset;
+  const op = OPENERS[score.tone];
+  const ac = ACTIONS[score.tone];
+  const advice = `${op[i % op.length]} ${ac[(i + Math.floor(i / op.length)) % ac.length]}`;
+  return { score: { ...score, message: { east, west, advice } }, east: e, west: w };
 }

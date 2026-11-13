@@ -66,10 +66,14 @@ export function homeView(profile) {
   const today = getToday();
   const hex = getDailyHexagram(profile);
   let eastBody, westBody, scoreHtml = '';
+  let dayQuotes = [today.eastQuote, today.westQuote];
   if (profile) {
     const e = getEast(profile);
     const w = getWest(profile);
-    scoreHtml = scoreBlock(getScore(profile).score);
+    const sc = getScore(profile).score;
+    scoreHtml = scoreBlock(sc);
+    // 생년월일이 있으면 오늘 점수의 분위기에 맞춘 한마디를 보여 준다
+    dayQuotes = [sc.message.east, sc.message.west];
     eastBody = `
       <p class="kicker">오늘의 일진 ${e.daily.todayPillar.hanja} · ${e.daily.tenGod}</p>
       <h3 class="headline">${e.daily.title}</h3>
@@ -121,7 +125,7 @@ export function homeView(profile) {
 
   <section class="sec">
     ${secHead('오늘의 한마디')}
-    <div class="quotes">${quoteBlock(today.eastQuote, 'east')}${quoteBlock(today.westQuote, 'west')}</div>
+    <div class="quotes">${quoteBlock(dayQuotes[0], 'east')}${quoteBlock(dayQuotes[1], 'west')}</div>
   </section>
 
   <section class="sec">
@@ -544,11 +548,7 @@ export function scoreBlock(s) {
       <div class="ss east"><span>동양</span><span class="ss-bar"><i style="width:${s.east.score}%"></i></span><b>${s.east.score}</b></div>
       <div class="ss west"><span>서양</span><span class="ss-bar"><i style="width:${s.west.score}%"></i></span><b>${s.west.score}</b></div>
     </div>
-    <figure class="score-word">
-      <blockquote>${esc(s.message.q)}</blockquote>
-      <figcaption>${esc(s.message.src)}</figcaption>
-      <p>${esc(s.message.a)}</p>
-    </figure>
+    <p class="score-word">${esc(s.message.advice)}</p>
     <details class="score-why">
       <summary>점수가 나온 이유</summary>
       <div class="why-grid">

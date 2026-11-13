@@ -138,20 +138,6 @@ test('오늘의 점수: 50~100 범위', () => {
   }
 });
 
-import { SCORE_WORDS } from '../public/assets/js/data/score-words.js';
-
-test('점수 한마디: 모든 등급에 문구가 있고 하루 동안 같다', () => {
-  for (const tier of ['아주 좋음', '좋음', '무난', '천천히', '쉬어 가기']) {
-    assert.ok(SCORE_WORDS[tier]?.length >= 3, tier);
-    for (const w of SCORE_WORDS[tier]) assert.ok(w.q && w.src && w.a);
-  }
-  const p = { year: 1990, month: 5, day: 15, hour: 10, minute: 30 };
-  const a = totalScore(getEast(p, new Date('2026-11-13T01:00:00Z')), getWest(p, new Date('2026-11-13T01:00:00Z')));
-  const b = totalScore(getEast(p, new Date('2026-11-13T13:00:00Z')), getWest(p, new Date('2026-11-13T13:00:00Z')));
-  assert.deepEqual(a.message, b.message);
-  assert.ok(SCORE_WORDS[a.tier].includes(a.message));
-});
-
 test('서양 풀이는 하루 동안 같은 달 위치를 쓴다', () => {
   const p = { year: 1990, month: 5, day: 15 };
   // 2026-11-14 한국시 0시 1분과 23시 59분
@@ -161,29 +147,44 @@ test('서양 풀이는 하루 동안 같은 달 위치를 쓴다', () => {
   assert.equal(a.moon.house, b.moon.house);
 });
 
-test('한마디가 겹치지 않는다: 오늘의 한마디는 목록을 다 돌 때까지, 점수 한마디는 같은 등급 안에서', () => {
-  const days = 40;
-  const at = (k) => new Date(Date.UTC(2026, 0, 1 + k, 3));
-  const east = new Set(), west = new Set();
-  for (let k = 0; k < days; k++) { east.add(getToday(at(k)).eastQuote.text); west.add(getToday(at(k)).westQuote.text); }
-  assert.equal(east.size, days);
-  assert.equal(west.size, days);
+import { EAST_QUOTES, WEST_QUOTES } from '../public/assets/js/data/quotes.js';
+import { OPENERS, ACTIONS } from '../public/assets/js/data/advice.js';
 
+test('한마디 목록: 중복 없음, 분위기 표시, 동서양 겹침 없음', () => {
+  for (const list of [EAST_QUOTES, WEST_QUOTES]) {
+    assert.equal(new Set(list.map((q) => q.text)).size, list.length);
+    for (const q of list) assert.ok(q.text && q.src && 'gsc'.includes(q.tone), q.text);
+  }
+  const east = new Set(EAST_QUOTES.map((q) => q.text));
+  assert.deepEqual(WEST_QUOTES.filter((q) => east.has(q.text)).map((q) => q.text), []);
+  assert.ok(EAST_QUOTES.length >= 330 && WEST_QUOTES.length >= 300);
+  for (const t of 'gsc') assert.equal(OPENERS[t].length * ACTIONS[t].length, 400);
+});
+
+test('생년월일 없이 보는 오늘의 한마디는 목록을 다 돌 때까지 반복되지 않는다', () => {
+  const at = (k) => new Date(Date.UTC(2026, 0, 1 + k, 3));
+  const e = new Set(), w = new Set();
+  for (let k = 0; k < WEST_QUOTES.length; k++) { e.add(getToday(at(k)).eastQuote.text); w.add(getToday(at(k)).westQuote.text); }
+  assert.equal(e.size, WEST_QUOTES.length);
+  assert.equal(w.size, WEST_QUOTES.length);
+});
+
+test('점수 한마디·조언: 1년 단위 안에서 겹치지 않고 분위기를 따른다', () => {
   const p = { year: 1990, month: 5, day: 15, hour: 10, minute: 30 };
-  const seen = {};
-  // 순번을 세는 64일 단위 하나를 통째로 확인
-  const blockStart = Math.ceil(getToday(at(0)).dayNumber / 64) * 64;
-  const startK = blockStart - getToday(at(0)).dayNumber;
-  for (let k = startK; k < startK + 64; k++) {
-    const t = getToday(at(k));
-    const s = getScore(p, at(k)).score;
-    assert.ok(![t.eastQuote.text, t.westQuote.text].includes(s.message.q), '같은 화면 중복');
-    (seen[s.tier] ||= []).push(s.message.q);
+  const first = getToday(new Date(Date.UTC(2026, 0, 1, 3))).dayNumber;
+  const start = Math.ceil(first / 365) * 365; // 1년 단위의 첫날
+  const at = (d) => new Date(((d - 0.5) - 2440587.5) * 86400000 + 3 * 3600000);
+  const east = [], west = [], advice = [];
+  let matched = 0;
+  for (let d = start; d < start + 365; d++) {
+    const s = getScore(p, at(d)).score;
+    east.push(s.message.east.text);
+    west.push(s.message.west.text);
+    advice.push(s.message.advice);
+    if (s.message.east.tone === s.tone) matched++;
   }
-  for (const [tier, list] of Object.entries(seen)) {
-    const n = SCORE_WORDS[tier].length;
-    // 같은 등급에서 연달아 나온 n개 안에는 중복이 거의 없어야 한다(같은 화면 중복 회피로 한 칸 밀리는 경우만 허용)
-    const firstN = list.slice(0, n);
-    assert.ok(firstN.length - new Set(firstN).size <= 1, `${tier}: ${firstN.length - new Set(firstN).size}개 중복`);
-  }
+  assert.equal(new Set(east.slice(0, EAST_QUOTES.length)).size, Math.min(365, EAST_QUOTES.length));
+  assert.equal(new Set(west.slice(0, WEST_QUOTES.length)).size, WEST_QUOTES.length);
+  assert.equal(new Set(advice).size, 365);
+  assert.ok(matched / 365 > 0.6, `분위기 일치 ${matched}/365`);
 });
