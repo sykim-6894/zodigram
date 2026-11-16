@@ -9,6 +9,8 @@ import { dstRanges } from '../core/koreatime.js';
 import { natalChart, readPlacement, dailyTransits } from '../core/natal.js';
 import { chartWheel } from './chart.js';
 import { ziweiChart, ziweiYear } from '../core/ziwei.js';
+import { getTopics } from '../core/topics.js';
+import { TOPIC_KEYS, TOPICS as TOPICS_INFO } from '../data/topic-text.js';
 import { STARS as ZW_STARS, PALACES as ZW_PALACES, SIHUA_TEXT as ZW_SIHUA } from '../data/ziwei-text.js';
 import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
 import { glyph, roman, hexagramSvg } from './glyphs.js';
@@ -125,6 +127,7 @@ export function homeView(profile) {
   ${periodTabs('/')}
   ${greet}
   ${scoreHtml}
+  ${profile ? topicGrid(getTopics(profile, 'day'), 'day') : ''}
   <div class="split">
     <section class="col east">${sideLabel('east')}${eastBody}</section>
     <section class="col west">${sideLabel('west')}${westBody}</section>
@@ -232,6 +235,8 @@ export function eastView(profile) {
     <p>${e.daily.relationText}</p>
     <p class="tip"><b>오늘 어울리는 것</b> ${e.daily.tip}</p>
   </section>
+
+  ${topicSideSection(getTopics(profile, 'day'), 'east')}
 
   <section class="sec">
     ${secHead(`${e.animal.name}띠`, '十二支')}
@@ -344,6 +349,8 @@ export function westView(profile) {
     </div>
   </section>
 
+  ${topicSideSection(getTopics(profile, 'day'), 'west')}
+
   ${natalSection(profile)}
 
   <section class="sec">
@@ -429,6 +436,14 @@ export function meView(profile) {
 
     <label class="field"><span>태어난 시각</span><input name="time" type="time" value="${time}" ${p.year && !time ? 'disabled' : ''}></label>
     <label class="check"><input type="checkbox" name="noTime" ${p.year && !time ? 'checked' : ''}> 태어난 시각을 몰라요</label>
+    <fieldset class="field">
+      <legend>성별 <em>선택 · 사주의 연애운(배우자 별)에 쓰여요</em></legend>
+      <div class="seg seg3" role="radiogroup" aria-label="성별">
+        <label><input type="radio" name="gender" value="" ${!p.gender ? 'checked' : ''}><span>선택 안 함</span></label>
+        <label><input type="radio" name="gender" value="f" ${p.gender === 'f' ? 'checked' : ''}><span>여성</span></label>
+        <label><input type="radio" name="gender" value="m" ${p.gender === 'm' ? 'checked' : ''}><span>남성</span></label>
+      </div>
+    </fieldset>
     <label class="field"><span>태어난 곳 <em>상승궁 계산에 쓰여요</em></span>
       <select name="place">${PLACES.map(([n]) => `<option${(p.place || '서울') === n ? ' selected' : ''}>${n}</option>`).join('')}</select>
     </label>
@@ -454,6 +469,7 @@ export function aboutView() {
         <li><b>일진</b> — 오늘의 천간이 내 일간에게 어떤 십신인지로 하루의 성격을 봅니다.</li>
         <li><b>띠</b> — 오늘의 지지와 내 띠의 합·충·해 관계를 봅니다.</li>
         <li><b>주역</b> — 동전 세 개를 여섯 번 던지는 척전법을 씁니다.</li>
+        <li><b>주제별 운세</b> — 연애·재물·일·건강을 그 기간 간지의 십신(성별을 입력하면 배우자 별 포함)과 일지·도화·오행 균형, 올해는 자미두수 유년 사화로 봅니다.</li>
         <li><b>동양 점성술(자미두수)</b> — 음력 생년·생월·생일과 시진으로 명궁·신궁과 오행국을 정하고, 열두 궁에 14주성·보좌성·사화를 배치합니다.</li>
       </ul></div>
     <div>${secHead('서양', '西')}
@@ -825,6 +841,7 @@ export function periodView(kind, profile, r) {
   ${periodTabs(path)}
   <p class="period-title">${r.title}</p>
   ${periodScore(r)}
+  ${kind === 'quarter' ? '' : topicGrid(getTopics(profile, kind), kind)}
   ${cols}`;
 }
 
@@ -898,5 +915,78 @@ function ziweiSection(profile) {
       <p>올해의 명궁은 <b>${yr.palace.name}(${ZW_PALACES[yr.palace.name]})</b>입니다. ${yr.palace.main.length ? `${zwStarsText(yr.palace.main)}의 기운으로 한 해를 보냅니다.` : '주성이 없는 궁이라 마주한 궁의 흐름을 함께 봅니다.'}
       올해의 화기는 ${ZW_STARS[yr.sihua[3].star].ko}${yr.sihua[3].branch !== undefined ? `(${c.palaces[yr.sihua[3].branch].name})` : ''}, 화록은 ${ZW_STARS[yr.sihua[0].star].ko}${yr.sihua[0].branch !== undefined ? `(${c.palaces[yr.sihua[0].branch].name})` : ''}에 듭니다.</p>
     </div>
+  </section>`;
+}
+
+/* ───────── 주제별 운세: 연애 · 재물 · 일·학업 · 건강 ───────── */
+const KIND_LABEL = { day: '오늘', month: '이달', year: '올해' };
+
+/** 운세 화면의 주제 4칸 */
+export function topicGrid(topics, kind) {
+  return `<section class="topics" aria-label="주제별 운세">
+    ${TOPIC_KEYS.map((k) => {
+      const t = topics[k];
+      return `<a class="topic-cell" href="#/topic/${k}/${kind}">
+        <span class="tc-head"><span class="tc-hanja">${t.hanja}</span><span class="tc-name">${t.ko}</span></span>
+        <span class="tc-score">${t.total}</span>
+        <span class="tc-line">${t.head}</span>
+      </a>`;
+    }).join('')}
+  </section>`;
+}
+
+function topicReasons(part) {
+  return `<ul class="plain treasons">${part.items.map((i) => `<li class="${i.delta > 0 ? 'up' : i.delta < 0 ? 'down' : ''}">
+    <span><b>${esc(i.label)}</b><small>${esc(i.detail)}</small></span><em>${sign(i.delta)}</em></li>`).join('')}</ul>`;
+}
+
+/** 주제 화면 */
+export function topicView(topic, kind, profile, topics) {
+  const today = getToday();
+  const head = TOPICS_INFO[topic];
+  const tabsTopic = `<nav class="ptabs" aria-label="주제">${TOPIC_KEYS.map((k) => `<a href="#/topic/${k}/${kind}"${k === topic ? ' aria-current="page"' : ''}>${TOPICS_INFO[k].ko}</a>`).join('')}</nav>`;
+  const tabsKind = `<nav class="ptabs sub" aria-label="기간">${['day', 'month', 'year'].map((k) => `<a href="#/topic/${topic}/${k}"${k === kind ? ' aria-current="page"' : ''}>${KIND_LABEL[k]}</a>`).join('')}</nav>`;
+  if (!profile) return `${dateline(today)}<div class="page-head"><h1>${head.title}</h1></div>${tabsTopic}${needProfile('east')}`;
+  const t = topics[topic];
+  const r = { title: `${KIND_LABEL[kind]}의 ${t.title}`, total: t.total, tier: t.tier, advice: t.head, east: t.east, west: t.west };
+  const loveNote = topic === 'love'
+    ? (t.genderUsed ? '<p class="note">사주에서는 성별에 따라 배우자를 뜻하는 별(남성은 재성, 여성은 관성)을 중심으로 봅니다.</p>'
+      : '<p class="note">성별을 입력하지 않아 배우자 별을 남녀 모두의 기준으로 함께 봅니다. <a href="#/me">내 정보에서 입력</a>하면 더 정확해져요.</p>')
+    : '';
+  return `${dateline(today)}
+  <div class="page-head"><p class="kicker"><a href="#/">운세</a> · 주제별</p><h1>${head.title} <span class="h1-hanja">${head.hanja}</span></h1></div>
+  ${tabsTopic}
+  ${tabsKind}
+  ${periodScore(r)}
+  <p class="tip topic-tip"><b>이렇게 해 보세요</b>${t.tip}</p>
+  <div class="split">
+    <section class="col east">${sideLabel('east')}
+      <p class="kicker">${kind === 'year' ? '세운·자미두수 유년' : kind === 'month' ? '월운' : '일진'}으로 본 ${head.ko}</p>
+      <h3 class="headline sm">동양 ${t.east.score}점</h3>
+      ${topicReasons(t.east)}
+      ${loveNote}
+    </section>
+    <section class="col west">${sideLabel('west')}
+      <p class="kicker">${kind === 'year' ? '목성·토성' : kind === 'month' ? '이달의 하늘' : '오늘의 하늘'}으로 본 ${head.ko}</p>
+      <h3 class="headline sm">서양 ${t.west.score}점</h3>
+      ${topicReasons(t.west)}
+    </section>
+  </div>`;
+}
+
+/** 동양·서양 페이지의 주제별 풀이(한쪽만) */
+export function topicSideSection(topics, side) {
+  return `<section class="sec">
+    ${secHead('주제별 풀이', side === 'east' ? '緣 財 業 康' : '♀︎ ♃︎ ☉︎ ♂︎')}
+    <ul class="plain tside">${TOPIC_KEYS.map((k) => {
+      const t = topics[k];
+      const part = t[side];
+      const top = part.items.slice().sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))[0];
+      return `<li><a href="#/topic/${k}/day">
+        <span class="ts-name">${t.ko}</span>
+        <span class="ts-text"><b>${esc(top.label)}</b><small>${esc(top.detail)}</small></span>
+        <span class="ts-score">${part.score}</span></a></li>`;
+    }).join('')}</ul>
+    <p class="note">오늘 기준입니다. 항목을 누르면 동양과 서양을 함께 볼 수 있어요.</p>
   </section>`;
 }

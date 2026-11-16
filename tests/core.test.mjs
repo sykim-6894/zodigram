@@ -357,3 +357,31 @@ test('서머타임·표준시 변천: 별자리·출생 차트·사주가 같은
   for (const k of ['year', 'month', 'day', 'hour']) assert.equal(main[k].hanja, manse[k].hanja);
   assert.equal(main.day.hanja, '丙辰'); // 전날
 });
+
+import { getTopics } from '../public/assets/js/core/topics.js';
+
+test('주제별 운세: 네 주제 × 세 기간, 50~100, 근거 합계, 성별 반영', () => {
+  const now = new Date('2026-11-16T03:00:00Z');
+  for (const gender of ['', 'f', 'm']) {
+    const p = { year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울', gender };
+    for (const kind of ['day', 'month', 'year']) {
+      const r = getTopics(p, kind, now);
+      assert.deepEqual(Object.keys(r), ['love', 'money', 'work', 'health']);
+      for (const t of Object.values(r)) {
+        for (const part of [t.east, t.west]) {
+          assert.ok(part.score >= 50 && part.score <= 100);
+          assert.equal(part.score, Math.max(50, Math.min(100, part.base + part.items.reduce((a, i) => a + i.delta, 0))));
+        }
+        assert.equal(t.total, Math.round((t.east.score + t.west.score) / 2));
+        assert.ok(t.head && t.tip);
+      }
+    }
+  }
+  // 같은 날 정관이 드는 사람: 여성은 배우자 별로 크게, 남성은 작게 반영
+  const base = { year: 1990, month: 5, day: 15, hour: 10, minute: 30 };
+  const f = getTopics({ ...base, gender: 'f' }, 'day', now).love.east.items[0].delta;
+  const m = getTopics({ ...base, gender: 'm' }, 'day', now).love.east.items[0].delta;
+  assert.notEqual(f, m);
+  // 시각이 없어도 계산된다(자미두수·상승궁 없이)
+  assert.ok(getTopics({ year: 1990, month: 5, day: 15 }, 'year', now).love.total >= 50);
+});

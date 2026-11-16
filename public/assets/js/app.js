@@ -8,6 +8,7 @@ import { hexagramSvg, coinSvg } from './ui/glyphs.js';
 import { getToday } from './core/fortune.js';
 import { manseLookup } from './core/manse.js';
 import { getYear, getMonth, getQuarter } from './core/period.js';
+import { getTopics } from './core/topics.js';
 import { prepareCard, shareCard, shareLink, downloadCard, uploadCard, shareCardLink, copyLink } from './ui/share.js';
 import * as V from './ui/views.js';
 
@@ -59,7 +60,17 @@ function periodPage(kind) {
   return V.periodView(kind, p, r);
 }
 
-const HOME_PATHS = ['/', '/month', '/quarter', '/year'];
+// 주제별 운세: #/topic/love/day 처럼 주제 × 기간
+for (const t of ['love', 'money', 'work', 'health']) {
+  for (const k of ['day', 'month', 'year']) {
+    routes[`/topic/${t}/${k}`] = () => {
+      const p = loadProfile();
+      return V.topicView(t, k, p, p ? getTopics(p, k) : null);
+    };
+  }
+}
+
+const HOME_PATHS = ['/', '/month', '/quarter', '/year', ...Object.keys(routes).filter((r) => r.startsWith('/topic/'))];
 
 function currentPath() {
   const h = location.hash.replace(/^#/, '') || '/';
@@ -271,6 +282,7 @@ function bindProfileForm() {
       year: b.solar.year, month: b.solar.month, day: b.solar.day,
       hour, minute,
       place: el.place.value,
+      gender: el.gender.value,
     });
     location.hash = '#/';
   });
