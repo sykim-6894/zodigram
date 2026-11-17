@@ -385,3 +385,23 @@ test('주제별 운세: 네 주제 × 세 기간, 50~100, 근거 합계, 성별 
   // 시각이 없어도 계산된다(자미두수·상승궁 없이)
   assert.ok(getTopics({ year: 1990, month: 5, day: 15 }, 'year', now).love.total >= 50);
 });
+
+import { computeMatch } from '../public/assets/js/core/match.js';
+
+test('궁합: 50~100, 근거 합계, 대칭에 가까움, 천간합·충 반영', () => {
+  const a = { name: '가', year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울' };
+  const b = { name: '나', year: 1988, month: 11, day: 3, hour: 7, minute: 0, place: '부산' };
+  const r = computeMatch(a, b);
+  for (const part of [r.east, r.west]) {
+    assert.ok(part.score >= 50 && part.score <= 100);
+    assert.equal(part.score, Math.max(50, Math.min(100, part.base + part.items.reduce((x, i) => x + i.delta, 0))));
+  }
+  assert.equal(r.total, Math.round((r.east.score + r.west.score) / 2));
+  assert.ok(r.level && r.text);
+  // 동양 점수는 순서를 바꿔도 같다
+  assert.equal(computeMatch(b, a).east.score, r.east.score);
+  // 일지 辰·戌 충이 들어간다
+  assert.ok(r.east.items.some((i) => i.label.startsWith('일지 辰·戌') && i.delta < 0));
+  // 시각이 없는 사람과도 계산된다
+  assert.ok(computeMatch(a, { name: '다', year: 1995, month: 1, day: 1 }).west.uncertain);
+});

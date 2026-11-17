@@ -62,8 +62,9 @@ async function uploadCard(request, env, url) {
   if (buf.byteLength > MAX_BYTES) return json({ error: 'too-large' }, 413);
   if (!isCardPng(buf)) return json({ error: 'invalid-image' }, 400);
   const date = (request.headers.get('x-card-date') || '').match(/^\d{4}-\d{2}-\d{2}$/)?.[0] || '';
+  const kind = request.headers.get('x-card-kind') === 'match' ? 'match' : 'today';
   const id = newId();
-  await env.CARDS.put(`card:${id}`, buf, { expirationTtl: TTL_SECONDS, metadata: { date, created: Date.now() } });
+  await env.CARDS.put(`card:${id}`, buf, { expirationTtl: TTL_SECONDS, metadata: { date, kind, created: Date.now() } });
   return json({ id, url: `${url.origin}/c/${id}` }, 201);
 }
 
@@ -81,9 +82,10 @@ async function cardPage(id, env, url) {
   const ok = !!found?.value;
   const date = found?.metadata?.date || '';
   const dateText = date ? date.replace(/^(\d{4})-0?(\d+)-0?(\d+)$/, '$1년 $2월 $3일') : '';
+  const isMatch = found?.metadata?.kind === 'match';
   const img = `${url.origin}/c/${id}.png`;
   const home = `${url.origin}/`;
-  const title = ok ? `${dateText ? dateText + ' ' : ''}오늘의 운세 카드 · Zodigram` : '카드를 찾을 수 없어요 · Zodigram';
+  const title = ok ? (isMatch ? '궁합 카드 · Zodigram' : `${dateText ? dateText + ' ' : ''}오늘의 운세 카드 · Zodigram`) : '카드를 찾을 수 없어요 · Zodigram';
   const desc = '동양의 괘, 서양의 별로 읽는 오늘. 나의 오늘 운세도 확인해 보세요.';
 
   const html = `<!doctype html>
@@ -129,9 +131,9 @@ ${ok ? `<meta property="og:image" content="${img}">
 <div class="wrap">
   <header><a href="${home}">Zodigram</a><span>별과 괘</span></header>
   ${ok ? `<img class="card" src="${img}" alt="${dateText} 오늘의 운세 카드" width="${CARD_W}" height="${CARD_H}">
-  <p class="cap">${dateText ? dateText + ' · ' : ''}누군가 Zodigram에서 받은 오늘의 운세예요.</p>` : `<p class="gone">이 카드는 보관 기간(30일)이 지나 사라졌어요.<br>오늘의 운세는 언제든 새로 볼 수 있어요.</p>`}
+  <p class="cap">${dateText ? dateText + ' · ' : ''}${isMatch ? '누군가 Zodigram에서 본 두 사람의 궁합이에요' : '누군가 Zodigram에서 받은 오늘의 운세예요'}</p>` : `<p class="gone">이 카드는 보관 기간(30일)이 지나 사라졌어요.<br>오늘의 운세는 언제든 새로 볼 수 있어요.</p>`}
   <a class="btn" href="${home}">나의 오늘 운세 보기</a>
-  <a class="sub" href="${home}#/calendar">길일 달력 보러 가기</a>
+  <a class="sub" href="${home}${isMatch ? '#/match' : '#/calendar'}">${isMatch ? '나도 궁합 보러 가기' : '길일 달력 보러 가기'}</a>
   <footer>카드는 만든 날로부터 30일 동안 보관됩니다. 운세는 재미로 봐 주세요.</footer>
 </div>
 </body>

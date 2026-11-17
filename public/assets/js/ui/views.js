@@ -403,16 +403,21 @@ export function tarotView() {
 }
 
 /* ───────── 내 정보 ───────── */
-export function meView(profile) {
+export const RELATIONS = ['연인·배우자', '친구', '가족', '동료', '기타'];
+
+/** 내 정보(mode 'me') 또는 저장한 사람 추가·수정(mode 'person') 폼 */
+export function meView(profile, mode = 'me', people = []) {
   const p = profile || {};
+  const isPerson = mode === 'person';
   const date = p.year ? `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}` : '';
   const time = p.hour !== undefined && p.hour !== null && p.hour !== '' ? `${String(p.hour).padStart(2, '0')}:${String(p.minute || 0).padStart(2, '0')}` : '';
   const isLunar = p.calendar === 'lunar' && p.lunar;
   const l = p.lunar || {};
   const opts = (n, sel) => Array.from({ length: n }, (_, i) => `<option value="${i + 1}"${sel === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('');
-  return `<div class="page-head"><h1>내 정보</h1></div>
+  return `<div class="page-head">${isPerson ? '<p class="kicker"><a href="#/me">내 정보</a> · 저장한 사람</p>' : ''}<h1>${isPerson ? (p.id ? `${esc(p.name)} 정보 수정` : '사람 추가') : '내 정보'}</h1></div>
   <form class="form" id="profileForm" autocomplete="off" novalidate>
-    <label class="field"><span>이름 또는 별명 <em>선택</em></span><input name="name" maxlength="20" value="${esc(p.name || '')}"></label>
+    <label class="field"><span>이름 또는 별명 <em>${isPerson ? '필수' : '선택'}</em></span><input name="name" maxlength="20" value="${esc(p.name || '')}" ${isPerson ? 'required' : ''}></label>
+    ${isPerson ? `<label class="field"><span>관계</span><select name="relation">${RELATIONS.map((r) => `<option${(p.relation || RELATIONS[0]) === r ? ' selected' : ''}>${r}</option>`).join('')}</select></label>` : ''}
 
     <fieldset class="field">
       <legend>생년월일</legend>
@@ -450,9 +455,22 @@ export function meView(profile) {
     <p class="note">입력한 정보는 이 기기에만 저장되며 어디로도 전송되지 않습니다. 음력은 한국천문연구원 역서와 같은 규칙(한국 표준시 기준)으로 계산하며 1900~2100년을 지원합니다. 해외에서 태어났다면 가장 가까운 도시를 골라 주세요(시간대는 한국 기준).</p>
     <div class="row">
       <button class="btn" type="submit">저장</button>
-      ${profile ? '<button class="btn ghost" type="button" id="clear">지우기</button>' : ''}
+      ${isPerson ? (p.id ? '<button class="btn ghost" type="button" id="clear">삭제</button>' : '<a class="btn ghost" href="#/me">취소</a>') : (profile ? '<button class="btn ghost" type="button" id="clear">지우기</button>' : '')}
     </div>
-  </form>`;
+  </form>
+  ${isPerson ? '' : peopleSection(people, !!profile)}`;
+}
+
+/** 내 정보 아래: 저장한 사람 목록 */
+function peopleSection(people, hasMe) {
+  return `<section class="sec people">
+    ${secHead('저장한 사람', '緣')}
+    <p class="note">가족, 친구, 연인의 생년월일을 저장해 두면 나와의 궁합을 볼 수 있어요. 이 기기에만 저장됩니다.</p>
+    ${people.length ? `<ul class="plain plist">${people.map((x) => `<li>
+      <span class="pl-name"><b>${esc(x.name)}</b><small>${esc(x.relation || '')} · ${x.year}.${x.month}.${x.day}${x.calendar === 'lunar' ? ' (음력 입력)' : ''}</small></span>
+      <span class="pl-act">${hasMe ? `<a href="#/match/${x.id}">궁합</a>` : ''}<a href="#/person/${x.id}">수정</a></span></li>`).join('')}</ul>` : ''}
+    <a class="btn ghost" href="#/person/new">사람 추가</a>
+  </section>`;
 }
 
 /* ───────── 소개 ───────── */
@@ -988,5 +1006,57 @@ export function topicSideSection(topics, side) {
         <span class="ts-score">${part.score}</span></a></li>`;
     }).join('')}</ul>
     <p class="note">오늘 기준입니다. 항목을 누르면 동양과 서양을 함께 볼 수 있어요.</p>
+  </section>`;
+}
+
+/* ───────── 궁합 ───────── */
+function matchReasons(part) {
+  return `<ul class="plain treasons">${part.items.map((i) => `<li class="${i.delta > 0 ? 'up' : i.delta < 0 ? 'down' : ''}">
+    <span><b>${esc(i.label)}</b><small>${esc(i.detail)}</small></span><em>${sign(i.delta)}</em></li>`).join('')}</ul>`;
+}
+
+export function matchView(me, people, other, result) {
+  const head = `<div class="page-head"><h1>궁합 <span class="h1-hanja">宮合</span></h1></div>`;
+  if (!me) return `${head}<div class="empty"><p>먼저 내 생년월일을 입력해 주세요. 그다음 함께 볼 사람을 추가하면 궁합을 볼 수 있어요.</p><a class="btn" href="#/me">내 정보 입력</a></div>`;
+  if (!people.length) {
+    return `${head}<div class="empty"><p>가족, 친구, 연인의 생년월일을 저장하면 나와의 궁합을 동양과 서양으로 함께 볼 수 있어요.</p><a class="btn" href="#/person/new">함께 볼 사람 추가</a></div>`;
+  }
+  const picker = `<div class="match-pick">
+    <span class="mp-me">${esc(me.name || '나')}</span><span class="mp-x">×</span>
+    <label class="mp-sel"><select id="matchWho" aria-label="함께 볼 사람">${people.map((p) => `<option value="${p.id}"${other && p.id === other.id ? ' selected' : ''}>${esc(p.name)} · ${esc(p.relation || '')}</option>`).join('')}</select></label>
+    <a class="link-btn" href="#/person/new">사람 추가</a>
+  </div>`;
+  if (!other || !result) return `${head}${picker}`;
+  const r = { title: `${me.name || '나'} × ${other.name}`, total: result.total, tier: result.level, advice: result.text, east: result.east, west: result.west };
+  return `${head}
+  ${picker}
+  ${periodScore(r)}
+  <div class="split">
+    <section class="col east">${sideLabel('east')}
+      <p class="kicker">사주 궁합 · 일간 · 일지 · 띠 · 오행</p>
+      <h3 class="headline sm">동양 ${result.east.score}점</h3>
+      ${matchReasons(result.east)}
+    </section>
+    <section class="col west">${sideLabel('west')}
+      <p class="kicker">별자리 궁합 · 태양 · 달 · 금성 · 화성</p>
+      <h3 class="headline sm">서양 ${result.west.score}점</h3>
+      ${matchReasons(result.west)}
+      ${result.west.uncertain ? '<p class="note">태어난 시각을 모르는 사람이 있어 달의 위치는 정오 기준으로 봤어요.</p>' : ''}
+    </section>
+  </div>
+  <section class="sec share">
+    ${secHead('궁합 나누기')}
+    <div class="share-layout">
+      <div class="share-preview" id="sharePreview" aria-label="궁합 카드 미리보기"></div>
+      <div class="share-body">
+        <p class="share-lede">두 사람의 궁합을 한 장의 카드로 만들어 보낼 수 있어요. 카드에는 이름과 점수, 풀이만 들어가고 생년월일은 들어가지 않아요</p>
+        <div class="share-row">
+          <button class="btn" id="shareCard">궁합 카드 공유</button>
+          <button class="link-btn" id="saveCard">이미지로 저장</button>
+        </div>
+        <div class="share-ready" id="shareReady" hidden></div>
+        <p class="share-status" id="shareStatus" aria-live="polite"></p>
+      </div>
+    </div>
   </section>`;
 }

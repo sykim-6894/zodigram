@@ -211,7 +211,7 @@ export async function uploadCard(card) {
   if (card.link) return card.link;
   const res = await fetch('api/card', {
     method: 'POST',
-    headers: { 'content-type': 'image/png', 'x-card-date': getToday().key },
+    headers: { 'content-type': 'image/png', 'x-card-date': getToday().key, 'x-card-kind': card.kind || 'today' },
     body: card.file,
   });
   if (!res.ok) throw new Error(`upload ${res.status}`);
@@ -223,7 +223,7 @@ export async function uploadCard(card) {
 /** 카드 주소를 공유 창으로 보낸다(카카오톡에서 카드 이미지가 미리보기로 붙는다). */
 export function shareCardLink(link) {
   if (navigator.share) {
-    return navigator.share({ title: 'Zodigram · 오늘의 운세', text: '오늘의 운세 카드', url: link })
+    return navigator.share({ title: 'Zodigram', text: '운세 카드', url: link })
       .then(() => '공유했습니다.')
       .catch((e) => (e?.name === 'AbortError' ? '공유를 취소했습니다.' : copyLink(link)));
   }
@@ -245,4 +245,60 @@ export function copyLink(link) {
   return (navigator.clipboard?.writeText(link) ?? Promise.reject())
     .then(() => '주소를 복사했습니다.')
     .catch(() => link);
+}
+
+/* ── 궁합 카드 ── */
+async function loadFonts(sample) {
+  if (!document.fonts?.load) return;
+  await Promise.all([
+    document.fonts.load(`600 50px ${SERIF}`, sample), document.fonts.load(`400 34px ${SERIF}`, sample),
+    document.fonts.load(`400 29px ${SANS}`, sample), document.fonts.load(`500 25px ${SANS}`, sample),
+  ]).catch(() => {});
+}
+
+/** 두 사람의 궁합 카드(1080×1350). 생년월일은 넣지 않는다. */
+export async function drawMatchCard(me, other, r) {
+  const nameA = me.name || '나';
+  const nameB = other.name;
+  // 나눠 보는 카드라 좋은 점이 먼저 오도록 점수가 높은 항목부터
+  const top = (part) => part.items.slice().sort((a, b) => b.delta - a.delta);
+  const e = top(r.east), w = top(r.west);
+  await loadFonts(JSON.stringify([nameA, nameB, r.level, r.text, e, w]) + 'Zodigram별과괘東西동양서양궁합×점0123456789…·');
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = C.paper;
+  ctx.fillRect(0, 0, W, H);
+
+  text(ctx, 'Zodigram', PAD, 150, `600 60px ${SERIF}`, C.ink);
+  ctx.font = `600 60px ${SERIF}`;
+  text(ctx, '궁합 宮合', PAD + ctx.measureText('Zodigram').width + 22, 150, `400 30px ${SERIF}`, C.ink3);
+  rule(ctx, 186, 3);
+  ctx.font = `600 50px ${SERIF}`;
+  const pair = wrap(ctx, `${nameA} × ${nameB}`, W - PAD * 2 - 220, 1)[0];
+  text(ctx, pair, PAD, 280, `600 50px ${SERIF}`, C.ink);
+  text(ctx, String(r.total), W - PAD - 40, 290, `600 96px ${SERIF}`, C.ink, 'right');
+  text(ctx, '점', W - PAD, 290, `400 30px ${SERIF}`, C.ink2, 'right');
+  text(ctx, r.level, PAD, 340, `500 30px ${SANS}`, C.east);
+  ctx.font = `400 28px ${SANS}`;
+  let y = 392;
+  for (const l of wrap(ctx, r.text, W - PAD * 2, 2)) { text(ctx, l, PAD, y, `400 28px ${SANS}`, C.ink2); y += 44; }
+  rule(ctx, y + 8, 1.5);
+
+  y = block(ctx, y + 48, { side: 'east', kicker: `사주 궁합 · 동양 ${r.east.score}점`, title: e[0].label, body: `${e[0].detail}${e[1] ? ` · ${e[1].label}` : ''}` });
+  rule(ctx, y + 4, 1, C.rule);
+  block(ctx, y + 44, { side: 'west', kicker: `별자리 궁합 · 서양 ${r.west.score}점`, title: w[0].label, body: `${w[0].detail}${w[1] ? ` · ${w[1].label}` : ''}` });
+
+  rule(ctx, H - 92, 3);
+  text(ctx, SITE, PAD, H - 50, `500 24px ${SANS}`, C.ink2);
+  text(ctx, '궁합은 재미로 봐 주세요', W - PAD, H - 50, `400 22px ${SANS}`, C.ink3, 'right');
+  return canvas;
+}
+
+export async function prepareMatchCard(me, other, r) {
+  const canvas = await drawMatchCard(me, other, r);
+  const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+  const file = new File([blob], `zodigram-match-${getToday().key}.png`, { type: 'image/png', lastModified: Date.now() });
+  return { file, url: URL.createObjectURL(blob), kind: 'match' };
 }

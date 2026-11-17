@@ -1,5 +1,6 @@
 // 해시 라우터 + 화면 상호작용. GitHub Pages 하위 경로에서도 동작하도록 해시(#/)를 쓴다.
-import { loadProfile, saveProfile, clearProfile } from './core/storage.js';
+import { loadProfile, saveProfile, clearProfile, loadPeople, getPerson, savePerson, deletePerson } from './core/storage.js';
+import { computeMatch } from './core/match.js';
 import { tossLine, readCast } from './core/iching.js';
 import { trueRandom, shuffle } from './core/seed.js';
 import { lunarToSolar, solarToLunar, formatLunar, LUNAR_MIN_YEAR, LUNAR_MAX_YEAR } from './core/lunar.js';
@@ -9,7 +10,7 @@ import { getToday } from './core/fortune.js';
 import { manseLookup } from './core/manse.js';
 import { getYear, getMonth, getQuarter } from './core/period.js';
 import { getTopics } from './core/topics.js';
-import { prepareCard, shareCard, shareLink, downloadCard, uploadCard, shareCardLink, copyLink } from './ui/share.js';
+import { prepareCard, shareCard, shareLink, downloadCard, uploadCard, shareCardLink, copyLink, prepareMatchCard } from './ui/share.js';
 import * as V from './ui/views.js';
 
 const view = document.getElementById('view');
@@ -41,12 +42,16 @@ const routes = {
   '/west/tarot': () => V.tarotView(),
   '/calendar': () => V.calendarView(loadProfile(), cal, cal.sel),
   '/manse': () => V.manseView(manse),
-  '/me': () => V.meView(loadProfile()),
+  '/me': () => V.meView(loadProfile(), 'me', loadPeople()),
+  '/person': () => V.meView(routeParam === 'new' ? null : getPerson(routeParam), 'person'),
+  '/match': () => matchPage(),
   '/about': () => V.aboutView(),
 };
 
 const binders = {
-  '/me': bindProfileForm,
+  '/me': () => bindProfileForm('me'),
+  '/person': () => bindProfileForm('person'),
+  '/match': bindMatch,
   '/east/iching': bindIching,
   '/west/tarot': bindTarot,
   '/calendar': bindCalendar,
@@ -72,9 +77,36 @@ for (const t of ['love', 'money', 'work', 'health']) {
 
 const HOME_PATHS = ['/', '/month', '/quarter', '/year', ...Object.keys(routes).filter((r) => r.startsWith('/topic/'))];
 
+// 주소 안의 값(#/person/<id>, #/match/<id>)
+let routeParam = null;
+
 function currentPath() {
   const h = location.hash.replace(/^#/, '') || '/';
-  return routes[h] ? h : '/';
+  routeParam = null;
+  if (routes[h]) return h;
+  let m = h.match(/^\/person\/(new|[a-z0-9]+)$/);
+  if (m) { routeParam = m[1]; return '/person'; }
+  m = h.match(/^\/match(?:\/([a-z0-9]+))?$/);
+  if (m) { routeParam = m[1] || null; return '/match'; }
+  return '/';
+}
+
+/* 궁합: 고른 사람이 없으면 처음 저장한 사람 */
+function matchPage() {
+  const me = loadProfile();
+  const people = loadPeople();
+  const other = (routeParam && getPerson(routeParam)) || people[0] || null;
+  return V.matchView(me, people, other, me && other ? computeMatch(me, other) : null);
+}
+
+function bindMatch() {
+  document.getElementById('matchWho')?.addEventListener('change', (ev) => { location.hash = `#/match/${ev.target.value}`; });
+  const btn = document.getElementById('shareCard');
+  if (!btn) return;
+  const me = loadProfile();
+  const people = loadPeople();
+  const other = (routeParam && getPerson(routeParam)) || people[0];
+  bindCardShare(() => prepareMatchCard(me, other, computeMatch(me, other)));
 }
 
 function render() {
@@ -83,7 +115,7 @@ function render() {
   document.body.dataset.route = path.split('/')[1] || 'home';
   document.querySelectorAll('[data-nav]').forEach((a) => {
     const target = a.getAttribute('href').replace(/^#/, '');
-    const active = target === '/' ? HOME_PATHS.includes(path) : path.startsWith(target);
+    const active = target === '/' ? HOME_PATHS.includes(path) : path.startsWith(target) || (target === '/me' && path === '/person');
     a.toggleAttribute('aria-current', active);
     if (active) a.setAttribute('aria-current', 'page');
   });
@@ -131,6 +163,11 @@ function renderCalendar(scrollToDetail = false) {
 
 /* 오늘 운세 공유: 화면이 열릴 때 카드를 미리 만들고, 누르면 바로 공유 */
 function bindShare() {
+  if (!document.getElementById('shareCard')) return;
+  bindCardShare(() => prepareCard(loadProfile()));
+}
+
+function bindCardShare(make) {
   const btn = document.getElementById('shareCard');
   if (!btn) return;
   const status = document.getElementById('shareStatus');
@@ -139,7 +176,7 @@ function bindShare() {
   let card = null;
   btn.disabled = true;
   status.textContent = '카드를 준비하는 중…';
-  prepareCard(loadProfile()).then((c) => {
+  make().then((c) => {
     card = c;
     preview.innerHTML = `<img src="${c.url}" alt="오늘의 운세 카드" width="270" height="338">`;
     btn.disabled = false;
@@ -220,7 +257,7 @@ function bindManse() {
 }
 
 /* 내 정보 */
-function bindProfileForm() {
+function bindProfileForm(mode = 'me') {
   const form = document.getElementById('profileForm');
   const noTime = form.elements.noTime;
   noTime.addEventListener('change', () => {
@@ -275,7 +312,7 @@ function bindProfileForm() {
     if (!noTime.checked && el.time.value) {
       [hour, minute] = el.time.value.split(':').map(Number);
     }
-    saveProfile({
+    const data = {
       name: el.name.value.trim(),
       calendar: b.calendar,
       lunar: b.calendar === 'lunar' ? b.lunar : null,
@@ -283,10 +320,22 @@ function bindProfileForm() {
       hour, minute,
       place: el.place.value,
       gender: el.gender.value,
-    });
+    };
+    if (mode === 'person') {
+      if (!data.name) { conv.classList.add('err'); conv.textContent = '이름이나 별명을 입력해 주세요.'; el.name.focus(); return; }
+      const saved = savePerson({ ...data, id: routeParam !== 'new' ? routeParam : undefined, relation: el.relation.value });
+      location.hash = loadProfile() ? `#/match/${saved.id}` : '#/me';
+      return;
+    }
+    saveProfile(data);
     location.hash = '#/';
   });
   document.getElementById('clear')?.addEventListener('click', () => {
+    if (mode === 'person') {
+      deletePerson(routeParam);
+      location.hash = '#/me';
+      return;
+    }
     clearProfile();
     render();
   });

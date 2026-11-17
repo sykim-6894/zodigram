@@ -85,7 +85,7 @@ button { font: inherit; color: inherit; }
   position: fixed; left: 0; right: 0; bottom: 0;
   height: calc(var(--tab-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(6, 1fr);
   background: var(--paper);
   border-top: 1px solid var(--rule);
   z-index: 10;
@@ -664,3 +664,19 @@ fieldset.field legend em { font-style: normal; color: var(--ink-3); margin-left:
 .ts-score { font: 600 18px/1 var(--serif); text-align: right; font-variant-numeric: tabular-nums; }
 .page-head.east ~ .sec .ts-score { color: var(--east); }
 .page-head.west ~ .sec .ts-score { color: var(--west); }
+
+/* ── 궁합 · 저장한 사람 ── */
+.match-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0 0 20px; border-bottom: 1px solid var(--rule); }
+.mp-me { font: 600 20px/1.3 var(--serif); }
+.mp-x { font: 400 20px/1 var(--serif); color: var(--ink-3); }
+.mp-sel select {
+  height: 44px; padding: 0 12px; min-width: 180px; font: 16px var(--sans); color: var(--ink);
+  background: transparent; border: 1px solid var(--rule); border-bottom-color: var(--ink-2); border-radius: 0;
+}
+.plist li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; }
+.pl-name b { display: block; font: 600 16px/1.4 var(--serif); }
+.pl-name small { display: block; font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+.pl-act { display: flex; gap: 16px; flex: none; font-size: 14px; }
+.pl-act a { color: var(--ink-2); }
+.pl-act a:first-child { color: var(--east); }
+.sec.people .btn { margin-top: 12px; }
