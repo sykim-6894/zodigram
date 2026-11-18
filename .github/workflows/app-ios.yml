@@ -1,0 +1,25 @@
+name: iOS 빌드 확인
+
+# 맥이 없어도 iOS 프로젝트가 빌드되는지 GitHub의 맥 서버에서 확인한다.
+# 서명 없이 시뮬레이터용으로만 빌드한다. 스토어 제출용 빌드는 Apple 개발자 계정 서명이 필요하다(docs/APP.md).
+on:
+  workflow_dispatch:
+
+jobs:
+  ios-simulator:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx cap sync ios
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: 시뮬레이터용 빌드(서명 없음)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build

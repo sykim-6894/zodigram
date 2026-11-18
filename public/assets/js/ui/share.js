@@ -1,5 +1,6 @@
 // 오늘의 운세를 1080×1350 이미지 카드로 그려 공유하거나 저장한다. (외부 라이브러리 없이 Canvas)
 import { getToday, getEast, getWest, getDailyHexagram, getScore } from '../core/fortune.js';
+import { SITE_ORIGIN, publicUrl, apiBase, shareData, isShareCancel } from '../core/env.js';
 
 const W = 1080, H = 1350, PAD = 92;
 const C = {
@@ -8,7 +9,7 @@ const C = {
 };
 const SERIF = '"Noto Serif KR", "Batang", serif';
 const SANS = '"Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif';
-const SITE = 'zodigram.ksy2202.workers.dev';
+const SITE = SITE_ORIGIN.replace('https://', '');
 
 /** 띄어쓰기 단위로 줄바꿈(한국어 keep-all). 한 단어가 너무 길면 글자 단위로 자른다. */
 function wrap(ctx, text, maxW, maxLines) {
@@ -157,7 +158,7 @@ export async function drawTodayCard(profile) {
   return canvas;
 }
 
-export const siteUrl = () => `${location.origin}${location.pathname}`;
+export const siteUrl = publicUrl;
 
 /**
  * 카드 이미지를 미리 만들어 둔다.
@@ -209,7 +210,7 @@ export function shareCard(card) {
  */
 export async function uploadCard(card) {
   if (card.link) return card.link;
-  const res = await fetch('api/card', {
+  const res = await fetch(`${apiBase()}api/card`, {
     method: 'POST',
     headers: { 'content-type': 'image/png', 'x-card-date': getToday().key, 'x-card-kind': card.kind || 'today' },
     body: card.file,
@@ -222,23 +223,17 @@ export async function uploadCard(card) {
 
 /** 카드 주소를 공유 창으로 보낸다(카카오톡에서 카드 이미지가 미리보기로 붙는다). */
 export function shareCardLink(link) {
-  if (navigator.share) {
-    return navigator.share({ title: 'Zodigram', text: '운세 카드', url: link })
-      .then(() => '공유했습니다.')
-      .catch((e) => (e?.name === 'AbortError' ? '공유를 취소했습니다.' : copyLink(link)));
-  }
-  return copyLink(link);
+  const p = shareData({ title: 'Zodigram', text: '운세 카드', url: link });
+  if (!p) return copyLink(link);
+  return p.then(() => '공유했습니다.').catch((e) => (isShareCancel(e) ? '공유를 취소했습니다.' : copyLink(link)));
 }
 
 /** 링크만 공유(미리보기 카드가 붙는다). 공유 창이 없으면 복사. */
 export function shareLink() {
   const link = siteUrl();
-  if (navigator.share) {
-    return navigator.share({ title: 'Zodigram · 별과 괘', text: '동양의 괘, 서양의 별로 읽는 오늘의 운세', url: link })
-      .then(() => '공유했습니다.')
-      .catch((e) => (e?.name === 'AbortError' ? '공유를 취소했습니다.' : copyLink(link)));
-  }
-  return copyLink(link);
+  const p = shareData({ title: 'Zodigram · 별과 괘', text: '동양의 괘, 서양의 별로 읽는 오늘의 운세', url: link });
+  if (!p) return copyLink(link);
+  return p.then(() => '공유했습니다.').catch((e) => (isShareCancel(e) ? '공유를 취소했습니다.' : copyLink(link)));
 }
 
 export function copyLink(link) {

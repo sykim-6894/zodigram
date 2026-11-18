@@ -88,6 +88,10 @@ wrangler.jsonc          ← Cloudflare Workers 배포 설정
 KV가 없으면 업로드가 503을 돌려주고, 화면은 이미지 파일 공유로 자동 대체됩니다.
 로컬 개발 서버(`npm run dev`)는 같은 Worker 코드를 메모리 KV로 실행합니다.
 
+## 앱 (Android · iOS)
+
+같은 웹 코드를 Capacitor 로 감싼 앱 프로젝트가 `android/`, `ios/` 에 있습니다. 빌드·출시 절차와 iOS(맥 필요) 안내는 [docs/APP.md](docs/APP.md) 를 보세요.
+
 ## 앱으로 확장하기
 
 이미 준비된 것

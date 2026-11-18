@@ -13,14 +13,31 @@ const CARD_H = 1350;
 const ID_RE = /^[A-Za-z0-9]{10}$/;
 const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
+// iOS·안드로이드 앱(Capacitor)의 웹뷰 출처. 이 출처에서 오는 카드 업로드만 브라우저가 허용하도록 CORS 를 연다.
+const APP_ORIGINS = new Set(['https://localhost', 'capacitor://localhost', 'ionic://localhost', 'http://localhost']);
+
+function corsHeaders(request) {
+  const origin = request.headers.get('origin');
+  if (!origin || !APP_ORIGINS.has(origin)) return {};
+  return { 'access-control-allow-origin': origin, vary: 'origin' };
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
     try {
       if (path === '/api/card') {
-        if (request.method !== 'POST') return json({ error: 'method' }, 405);
-        return await uploadCard(request, env, url);
+        const cors = corsHeaders(request);
+        if (request.method === 'OPTIONS') {
+          // 앱에서 올리기 전에 브라우저가 보내는 사전 확인(preflight)
+          return new Response(null, {
+            status: 204,
+            headers: { ...cors, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type, x-card-date, x-card-kind', 'access-control-max-age': '86400' },
+          });
+        }
+        if (request.method !== 'POST') return json({ error: 'method' }, 405, cors);
+        return await uploadCard(request, env, url, cors);
       }
       const m = path.match(/^\/c\/([A-Za-z0-9]+)(\.png)?$/);
       if (m && ID_RE.test(m[1]) && (request.method === 'GET' || request.method === 'HEAD')) {
@@ -33,10 +50,10 @@ export default {
   },
 };
 
-function json(data, status = 200) {
+function json(data, status = 200, extra = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extra },
   });
 }
 
@@ -54,18 +71,18 @@ function isCardPng(buf) {
   return dv.getUint32(16) === CARD_W && dv.getUint32(20) === CARD_H;
 }
 
-async function uploadCard(request, env, url) {
-  if (!env.CARDS) return json({ error: 'storage-unavailable' }, 503);
+async function uploadCard(request, env, url, cors = {}) {
+  if (!env.CARDS) return json({ error: 'storage-unavailable' }, 503, cors);
   const len = Number(request.headers.get('content-length') || 0);
-  if (len > MAX_BYTES) return json({ error: 'too-large' }, 413);
+  if (len > MAX_BYTES) return json({ error: 'too-large' }, 413, cors);
   const buf = await request.arrayBuffer();
-  if (buf.byteLength > MAX_BYTES) return json({ error: 'too-large' }, 413);
-  if (!isCardPng(buf)) return json({ error: 'invalid-image' }, 400);
+  if (buf.byteLength > MAX_BYTES) return json({ error: 'too-large' }, 413, cors);
+  if (!isCardPng(buf)) return json({ error: 'invalid-image' }, 400, cors);
   const date = (request.headers.get('x-card-date') || '').match(/^\d{4}-\d{2}-\d{2}$/)?.[0] || '';
   const kind = request.headers.get('x-card-kind') === 'match' ? 'match' : 'today';
   const id = newId();
   await env.CARDS.put(`card:${id}`, buf, { expirationTtl: TTL_SECONDS, metadata: { date, kind, created: Date.now() } });
-  return json({ id, url: `${url.origin}/c/${id}` }, 201);
+  return json({ id, url: `${url.origin}/c/${id}` }, 201, cors);
 }
 
 async function cardImage(id, env) {

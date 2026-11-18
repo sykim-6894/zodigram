@@ -1,1 +1,6 @@
 * text=auto eol=lf
+# 윈도우 배치 파일은 CRLF, 바이너리는 그대로
+*.bat text eol=crlf
+*.jar binary
+*.png binary
+*.webp binary

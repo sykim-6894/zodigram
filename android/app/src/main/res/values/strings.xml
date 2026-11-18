@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zodigram</string>
+    <string name="title_activity_main">Zodigram</string>
+    <string name="package_name">com.zodigram.app</string>
+    <string name="custom_url_scheme">com.zodigram.app</string>
+</resources>

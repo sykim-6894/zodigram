@@ -6,6 +6,23 @@
   "description": "Zodigram · 별과 괘 — 동양과 서양의 오늘 운세",
   "scripts": {
     "test": "node --test tests/core.test.mjs",
-    "dev": "node scripts/serve.mjs"
+    "dev": "node scripts/serve.mjs",
+    "app:assets": "python scripts/make-app-assets.py && capacitor-assets generate --android --ios --iconBackgroundColor #F4F0E8 --iconBackgroundColorDark #191816 --splashBackgroundColor #F4F0E8 --splashBackgroundColorDark #191816",
+    "app:sync": "cap sync",
+    "app:android": "cap sync android && cd android && gradlew.bat assembleDebug",
+    "app:android:open": "cap open android",
+    "app:ios:open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2"
   }
 }

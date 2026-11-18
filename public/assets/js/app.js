@@ -2,6 +2,7 @@
 import { loadProfile, saveProfile, clearProfile, loadPeople, getPerson, savePerson, deletePerson, loadVault, addVaultItem, updateVaultItem, deleteVaultItem, getVaultItem, recordVisit, loadVisits } from './core/storage.js';
 import { ichingItem, tarotItem, matchItem, dayItem } from './core/vault.js';
 import { computeMatch } from './core/match.js';
+import { isNative } from './core/env.js';
 import { tossLine, readCast } from './core/iching.js';
 import { trueRandom, shuffle } from './core/seed.js';
 import { lunarToSolar, solarToLunar, formatLunar, LUNAR_MIN_YEAR, LUNAR_MAX_YEAR } from './core/lunar.js';
@@ -284,6 +285,8 @@ function bindCardShare(make) {
   const status = document.getElementById('shareStatus');
   const preview = document.getElementById('sharePreview');
   const save = document.getElementById('saveCard');
+  // 앱 안의 웹뷰에서는 파일 내려받기가 되지 않으므로 이미지 저장 버튼을 숨긴다(공유 링크로 보낸다)
+  if (isNative()) save?.remove();
   let card = null;
   btn.disabled = true;
   status.textContent = '카드를 준비하는 중…';
@@ -315,6 +318,10 @@ function bindCardShare(make) {
       });
       ready.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch {
+      if (isNative()) {
+        status.textContent = '공유 링크를 만들려면 인터넷 연결이 필요해요. 연결을 확인하고 다시 눌러 주세요.';
+        return;
+      }
       // 링크를 만들 수 없으면(오프라인·저장소 미설정) 이미지 파일 공유로 대신한다
       ready.hidden = false;
       ready.innerHTML = V.shareFallbackHtml();

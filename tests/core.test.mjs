@@ -532,3 +532,41 @@ test('내 기록: 연속 방문, 점수 흐름', () => {
   assert.deepEqual(vault.scoreHistory(null, today), []);
   assert.equal(vault.summarize([]), null);
 });
+
+import { isNative, publicUrl, apiBase, isShareCancel, shareData, SITE_ORIGIN } from '../public/assets/js/core/env.js';
+import worker from '../worker/index.js';
+
+test('앱 환경: 웹과 앱에서 공유 주소·서버 주소가 달라진다', async () => {
+  globalThis.location = { origin: 'https://example.test', pathname: '/zodigram/' };
+  assert.equal(isNative(), false);
+  assert.equal(publicUrl(), 'https://example.test/zodigram/');
+  assert.equal(apiBase(), '');
+  const calls = [];
+  globalThis.Capacitor = { isNativePlatform: () => true, Plugins: { Share: { share: async (d) => { calls.push(d); return {}; } } } };
+  assert.equal(isNative(), true);
+  assert.equal(publicUrl(), `${SITE_ORIGIN}/`);
+  assert.equal(apiBase(), `${SITE_ORIGIN}/`);
+  await shareData({ title: 't', text: 'x', url: 'https://u' });
+  assert.deepEqual(calls[0], { title: 't', text: 'x', url: 'https://u', dialogTitle: 't' });
+  delete globalThis.Capacitor;
+  assert.equal(shareData({ title: 't' }), null); // 공유 수단이 없으면 null
+  assert.ok(isShareCancel(new Error('Share canceled')));
+  assert.ok(isShareCancel({ name: 'AbortError' }));
+  assert.ok(!isShareCancel(new Error('boom')));
+});
+
+test('서버 CORS: 앱 출처에서만 카드 업로드를 허용한다', async () => {
+  const env = { ASSETS: { fetch: async () => new Response('asset') } };
+  const pre = (origin) => worker.fetch(new Request('https://x/api/card', { method: 'OPTIONS', headers: { origin, 'access-control-request-method': 'POST' } }), env);
+  const ios = await pre('capacitor://localhost');
+  assert.equal(ios.status, 204);
+  assert.equal(ios.headers.get('access-control-allow-origin'), 'capacitor://localhost');
+  assert.match(ios.headers.get('access-control-allow-headers'), /x-card-kind/);
+  assert.equal((await pre('https://localhost')).headers.get('access-control-allow-origin'), 'https://localhost');
+  assert.equal((await pre('https://evil.example')).headers.get('access-control-allow-origin'), null);
+  // 업로드 응답에도 붙는다(저장소가 없어 503이어도)
+  const post = (origin) => worker.fetch(new Request('https://x/api/card', { method: 'POST', headers: { origin }, body: 'x' }), env);
+  assert.equal((await post('https://localhost')).headers.get('access-control-allow-origin'), 'https://localhost');
+  assert.equal((await post('https://evil.example')).headers.get('access-control-allow-origin'), null);
+  assert.equal((await worker.fetch(new Request('https://x/api/card'), env)).status, 405);
+});

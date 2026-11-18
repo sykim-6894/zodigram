@@ -2,3 +2,13 @@ node_modules/
 .wrangler/
 .DS_Store
 Thumbs.db
+
+# 앱 서명 정보는 절대 올리지 않는다
+*.jks
+*.keystore
+key.properties
+*.p12
+*.cer
+*.mobileprovision
+*.p8
+android/local.properties

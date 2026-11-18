@@ -1,0 +1,26 @@
+{
+  "appId": "com.zodigram.app",
+  "appName": "Zodigram",
+  "webDir": "public",
+  "backgroundColor": "#F4F0E8",
+  "android": {
+    "backgroundColor": "#F4F0E8"
+  },
+  "ios": {
+    "backgroundColor": "#F4F0E8",
+    "contentInset": "never"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 800,
+      "backgroundColor": "#F4F0E8",
+      "showSpinner": false
+    },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DEFAULT",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}
