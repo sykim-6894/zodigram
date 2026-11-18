@@ -21,6 +21,10 @@
       "insetsHandling": "css",
       "style": "DEFAULT",
       "initialViewportFitValueHint": "cover"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_zodigram",
+      "iconColor": "#A33B27"
     }
   }
 }

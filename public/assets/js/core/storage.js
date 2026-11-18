@@ -1,5 +1,7 @@
 // 저장소 추상화. 앱으로 감쌀 때 이 파일만 Capacitor Preferences 등으로 바꾸면 된다.
 // 생년월일은 기기 밖으로 나가지 않는다.
+import { normalizeNotify } from './notify.js';
+
 const KEY = 'zodigram.profile.v1';
 const PEOPLE_KEY = 'zodigram.people.v1';
 
@@ -108,4 +110,18 @@ export function loadVisits() {
     const list = JSON.parse(localStorage.getItem(VISIT_KEY) || '[]');
     return Array.isArray(list) ? list.filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)) : [];
   } catch { return []; }
+}
+
+/* 아침 알림 설정 */
+const NOTIFY_KEY = 'zodigram.notify.v1';
+
+export function loadNotify() {
+  try { return normalizeNotify(JSON.parse(localStorage.getItem(NOTIFY_KEY) || 'null')); }
+  catch { return normalizeNotify(null); }
+}
+
+export function saveNotify(s) {
+  const v = normalizeNotify(s);
+  try { localStorage.setItem(NOTIFY_KEY, JSON.stringify(v)); } catch { /* 저장 불가 */ }
+  return v;
 }

@@ -413,7 +413,17 @@ export function tarotView() {
 export const RELATIONS = ['연인·배우자', '친구', '가족', '동료', '기타'];
 
 /** 내 정보(mode 'me') 또는 저장한 사람 추가·수정(mode 'person') 폼 */
-export function meView(profile, mode = 'me', people = []) {
+function notifySection(n, hasMe) {
+  return `<section class="sec notify" id="notifySec" hidden>
+    ${secHead('아침 알림', '朝')}
+    <p class="note">정한 시각에 오늘의 점수와 한마디를 알려 드려요. 알림은 이 기기에서만 만들어지며 서버를 거치지 않습니다.${hasMe ? '' : ' 먼저 위에서 내 정보를 저장해 주세요.'}</p>
+    <label class="check"><input type="checkbox" id="notifyOn" ${n.on ? 'checked' : ''} ${hasMe ? '' : 'disabled'}> 매일 아침 알려 주기</label>
+    <label class="field"><span>알림 시각</span><input type="time" id="notifyTime" value="${String(n.hour).padStart(2, '0')}:${String(n.minute).padStart(2, '0')}" ${n.on && hasMe ? '' : 'disabled'}></label>
+    <p class="conv" id="notifyMsg" aria-live="polite"></p>
+  </section>`;
+}
+
+export function meView(profile, mode = 'me', people = [], notify = { on: false, hour: 8, minute: 0 }) {
   const p = profile || {};
   const isPerson = mode === 'person';
   const date = p.year ? `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}` : '';
@@ -466,6 +476,7 @@ export function meView(profile, mode = 'me', people = []) {
       ${isPerson ? (p.id ? '<button class="btn ghost" type="button" id="clear">삭제</button>' : '<a class="btn ghost" href="#/me">취소</a>') : (profile ? '<button class="btn ghost" type="button" id="clear">지우기</button>' : '')}
     </div>
   </form>
+  ${isPerson ? '' : notifySection(notify, !!profile)}
   ${isPerson ? '' : peopleSection(people, !!profile)}`;
 }
 

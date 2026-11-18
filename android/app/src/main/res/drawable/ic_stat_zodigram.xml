@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 알림 표시줄에 보이는 작은 아이콘: 흰색 단색 별(로고의 별) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2 L13.94,10.06 L22,12 L13.94,13.94 L12,22 L10.06,13.94 L2,12 L10.06,10.06 Z" />
+</vector>

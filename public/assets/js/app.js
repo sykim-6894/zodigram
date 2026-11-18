@@ -1,5 +1,7 @@
 // 해시 라우터 + 화면 상호작용. GitHub Pages 하위 경로에서도 동작하도록 해시(#/)를 쓴다.
-import { loadProfile, saveProfile, clearProfile, loadPeople, getPerson, savePerson, deletePerson, loadVault, addVaultItem, updateVaultItem, deleteVaultItem, getVaultItem, recordVisit, loadVisits } from './core/storage.js';
+import { loadProfile, saveProfile, clearProfile, loadPeople, getPerson, savePerson, deletePerson, loadVault, addVaultItem, updateVaultItem, deleteVaultItem, getVaultItem, recordVisit, loadVisits, loadNotify, saveNotify } from './core/storage.js';
+import { notifySupported, requestNotifyPermission, applyNotifications } from './core/notify-native.js';
+import { parseTime } from './core/notify.js';
 import { ichingItem, tarotItem, matchItem, dayItem } from './core/vault.js';
 import { computeMatch } from './core/match.js';
 import { isNative } from './core/env.js';
@@ -89,7 +91,7 @@ const routes = {
   '/vault': () => V.vaultView(loadVault(), vaultFilter, loadProfile(), getToday().date, loadVisits()),
   '/vault/item': () => vaultItemPage(),
   '/manse': () => V.manseView(manse),
-  '/me': () => V.meView(loadProfile(), 'me', loadPeople()),
+  '/me': () => V.meView(loadProfile(), 'me', loadPeople(), loadNotify()),
   '/person': () => V.meView(routeParam === 'new' ? null : getPerson(routeParam), 'person'),
   '/match': () => matchPage(),
   '/about': () => V.aboutView(),
@@ -446,6 +448,7 @@ function bindProfileForm(mode = 'me') {
       return;
     }
     saveProfile(data);
+    applyNotifications();
     location.hash = '#/';
   });
   document.getElementById('clear')?.addEventListener('click', () => {
@@ -455,8 +458,37 @@ function bindProfileForm(mode = 'me') {
       return;
     }
     clearProfile();
+    applyNotifications();
     render();
   });
+  if (mode === 'me') bindNotify();
+}
+
+/* 아침 알림 설정(앱에서만 보인다) */
+function bindNotify() {
+  const sec = document.getElementById('notifySec');
+  if (!sec || !notifySupported()) return;
+  sec.hidden = false;
+  const on = document.getElementById('notifyOn');
+  const time = document.getElementById('notifyTime');
+  const msg = document.getElementById('notifyMsg');
+  const say = (t, err = false) => { msg.classList.toggle('err', err); msg.textContent = t; };
+  const store = async () => {
+    const t = parseTime(time.value) || { hour: 8, minute: 0 };
+    saveNotify({ on: on.checked, ...t });
+    const n = await applyNotifications();
+    say(on.checked ? (n ? `매일 ${time.value}에 알려 드릴게요.` : '알림을 예약하지 못했어요.') : '아침 알림을 껐어요.', on.checked && !n);
+  };
+  on.addEventListener('change', async () => {
+    if (on.checked && !(await requestNotifyPermission())) {
+      on.checked = false;
+      say('알림 권한이 꺼져 있어요. 기기 설정에서 Zodigram 알림을 허용해 주세요.', true);
+      return;
+    }
+    time.disabled = !on.checked;
+    store();
+  });
+  time.addEventListener('change', store);
 }
 
 /* 주역 점 */
@@ -533,10 +565,12 @@ function bindTarot() {
 window.addEventListener('hashchange', render);
 recordVisit(getToday().key);
 render();
+applyNotifications();
 
 // 자정이 지나면 오늘 내용을 새로 그린다(앱을 켜 둔 채 날이 바뀌는 경우)
 let lastDay = new Date().toDateString();
 document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') applyNotifications();
   if (document.visibilityState === 'visible' && new Date().toDateString() !== lastDay) {
     lastDay = new Date().toDateString();
     recordVisit(getToday().key);

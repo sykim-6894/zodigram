@@ -570,3 +570,33 @@ test('서버 CORS: 앱 출처에서만 카드 업로드를 허용한다', async 
   assert.equal((await post('https://evil.example')).headers.get('access-control-allow-origin'), null);
   assert.equal((await worker.fetch(new Request('https://x/api/card'), env)).status, 405);
 });
+
+test('아침 알림: 설정 정리와 예약 목록', async () => {
+  const { normalizeNotify, parseTime, buildSchedule, NOTIFY_DAYS } = await import('../public/assets/js/core/notify.js');
+  assert.deepEqual(normalizeNotify(null), { on: false, hour: 8, minute: 0 });
+  assert.deepEqual(normalizeNotify({ on: true, hour: 25, minute: 7 }), { on: true, hour: 8, minute: 7 });
+  assert.deepEqual(parseTime('07:30'), { hour: 7, minute: 30 });
+  assert.equal(parseTime('24:00'), null);
+  const profile = { year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울' };
+  const on = { on: true, hour: 8, minute: 0 };
+  assert.deepEqual(buildSchedule(profile, { ...on, on: false }), []);
+  assert.deepEqual(buildSchedule(null, on), []);
+  // 오전 7시에 켜면 오늘 8시부터, 9시에 켜면 내일부터 시작한다
+  const early = buildSchedule(profile, on, new Date(2026, 5, 10, 7, 0));
+  const late = buildSchedule(profile, on, new Date(2026, 5, 10, 9, 0));
+  assert.equal(early.length, NOTIFY_DAYS);
+  assert.equal(late.length, NOTIFY_DAYS - 1);
+  assert.equal(new Date(early[0].at).getDate(), 10);
+  assert.equal(new Date(late[0].at).getDate(), 11);
+  assert.deepEqual(early.map((n) => n.id), early.map((_, i) => i + 1));
+  for (const n of early) {
+    assert.match(n.title, /^오늘의 운세 (\d+)점$/);
+    const score = +n.title.match(/\d+/)[0];
+    assert.ok(score >= 50 && score <= 100);
+    assert.ok(n.body.length > 10);
+    assert.ok(!n.body.includes('[object'), '인용구가 글자로 바뀌어야 한다');
+    assert.ok(!n.body.includes('undefined'));
+  }
+  // 날마다 한마디가 겹치지 않는다
+  assert.equal(new Set(early.map((n) => n.body)).size, early.length);
+});
