@@ -10,6 +10,8 @@ import { natalChart, readPlacement, dailyTransits } from '../core/natal.js';
 import { chartWheel } from './chart.js';
 import { ziweiChart, ziweiYear } from '../core/ziwei.js';
 import { getTopics } from '../core/topics.js';
+import { monthScores } from '../core/pick.js';
+import { PURPOSES, PURPOSE_KEYS, OFFICERS } from '../data/pick-text.js';
 import { TOPIC_KEYS, TOPICS as TOPICS_INFO } from '../data/topic-text.js';
 import { STARS as ZW_STARS, PALACES as ZW_PALACES, SIHUA_TEXT as ZW_SIHUA } from '../data/ziwei-text.js';
 import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
@@ -483,6 +485,7 @@ export function aboutView() {
     <div>${secHead('동양', '東')}
       <ul class="plain">
         <li><b>사주</b> — 연주는 입춘, 월주는 12절기의 절입 시각(태양 황경)으로 나눕니다. 태어난 시각은 당시 표준시(1908~1961년의 UTC+8:30 시기 포함)와 서머타임(1948~51, 1955~60, 1987~88)을 바로잡은 뒤, 태어난 곳 경도의 태양시로 시주를 정합니다.</li>
+        <li><b>택일</b> — 건제십이신(건·제·만·평·정·집·파·위·성·수·개·폐), 손 없는 날, 요일, 내 일지·띠와의 충합, 수성 역행, 차오르는 달, 내 그날 운세 점수로 이사·결혼·개업·계약·여행·새 출발에 좋은 날을 고릅니다. 옛 택일서의 설명을 바탕으로 해서 책마다 다른 부분이 있어요.</li>
         <li><b>만세력</b> — 1900~2100년 어느 날짜·시각이든 네 기둥, 음력, 절기 구간을 조회할 수 있습니다.</li>
         <li><b>일진</b> — 오늘의 천간이 내 일간에게 어떤 십신인지로 하루의 성격을 봅니다.</li>
         <li><b>띠</b> — 오늘의 지지와 내 띠의 합·충·해 관계를 봅니다.</li>
@@ -517,6 +520,7 @@ function lunarShort(l) {
 
 export function calendarView(profile, ym, selected) {
   const cal = monthCalendar(ym.year, ym.month, profile);
+  const scores = monthScores(profile, ym.year, ym.month);
   const today = getToday().date;
   const isToday = (c) => c.year === today.year && c.month === today.month && c.day === today.day;
   const cells = cal.cells.map((c) => {
@@ -527,9 +531,13 @@ export function calendarView(profile, ym, selected) {
     if (isToday(c)) cls.push('today');
     if (selected === c.day) cls.push('sel');
     if (c.lunar.day === 1) cls.push('l1');
+    const sc = scores ? scores[c.day].total : null;
+    let tint = '';
+    if (sc !== null && sc >= 80) { cls.push('hi'); tint = ` style="--t:${Math.round(8 + Math.min(1, (sc - 80) / 12) * 16)}%"`; }
+    else if (sc !== null && sc <= 66) { cls.push('lo'); tint = ` style="--t:${Math.round(6 + Math.min(1, (66 - sc) / 12) * 8)}%"`; }
     const tag = c.holiday || c.term || '';
     const rel = c.relation && REL_SHORT[c.relation] ? `<span class="c-rel ${c.relation}">${REL_SHORT[c.relation]}</span>` : '';
-    return `<button class="${cls.join(' ')}" data-d="${c.day}" aria-label="${c.month}월 ${c.day}일${c.sonEmpty ? ', 손 없는 날' : ''}${tag ? ', ' + tag : ''}">
+    return `<button class="${cls.join(' ')}"${tint} data-d="${c.day}" aria-label="${c.month}월 ${c.day}일${c.sonEmpty ? ', 손 없는 날' : ''}${tag ? ', ' + tag : ''}${sc !== null ? ', 내 점수 ' + sc + '점' : ''}">
       <span class="c-d">${c.day}</span>${c.sonEmpty ? '<span class="c-son" title="손 없는 날"></span>' : ''}
       <span class="c-l">${lunarShort(c.lunar)}</span>
       <span class="c-p">${c.pillar.hanja}</span>
@@ -542,6 +550,7 @@ export function calendarView(profile, ym, selected) {
   const terms = real.filter((c) => c.term).map((c) => `${c.term} ${c.day}일`);
 
   return `<div class="page-head"><h1>길일 달력</h1></div>
+  ${calTabs('/calendar')}
   <div class="cal-bar">
     <button class="icon-btn" id="calPrev" aria-label="이전 달">‹</button>
     <h2 class="cal-title">${ym.year}년 ${ym.month}월</h2>
@@ -555,9 +564,9 @@ export function calendarView(profile, ym, selected) {
   </div>
   <ul class="cal-legend">
     <li><span class="c-son"></span>손 없는 날</li>
-    ${cal.hasProfile ? '<li><span class="c-rel harmony">합</span>내 일지와 합</li><li><span class="c-rel clash">충</span>내 일지와 충</li>' : '<li><a href="#/me">생년월일을 입력하면</a> 나와 맞는 날·부딪히는 날도 표시됩니다</li>'}
+    ${cal.hasProfile ? '<li><span class="lg hi"></span>내 점수가 높은 날</li><li><span class="lg lo"></span>낮은 날</li><li><span class="c-rel harmony">합</span>내 일지와 합</li><li><span class="c-rel clash">충</span>내 일지와 충</li>' : '<li><a href="#/me">생년월일을 입력하면</a> 나와 맞는 날·부딪히는 날도 표시됩니다</li>'}
   </ul>
-  <div id="calDetail">${selected ? calendarDetail(real.find((c) => c.day === selected), cal.hasProfile) : ''}</div>
+  <div id="calDetail">${selected ? calendarDetail(real.find((c) => c.day === selected), cal.hasProfile, scores && scores[selected]) : ''}</div>
   <section class="sec two">
     <div>${secHead('이달의 손 없는 날')}<p class="cal-list">${sonDays.map((d) => `${d}일`).join(' · ')}</p>
       <p class="note">음력 날짜 끝자리가 9와 0인 날로, 이사·개업·혼례 날짜로 예부터 많이 고릅니다.</p></div>
@@ -566,13 +575,16 @@ export function calendarView(profile, ym, selected) {
   </section>`;
 }
 
-export function calendarDetail(c, hasProfile) {
+export function calendarDetail(c, hasProfile, score) {
   if (!c) return '';
   const g = c.tenGod ? TEN_GOD_DAY[c.tenGod] : null;
+  const off = OFFICERS[c.officer];
   return `<div class="cal-detail">
     <p class="kicker">${c.month}월 ${c.day}일 ${WEEK[c.weekday]}요일 · 음력 ${c.lunar.leap ? '윤' : ''}${c.lunar.month}월 ${c.lunar.day}일 · ${c.pillar.hanja}(${c.pillar.hangul})일</p>
     ${c.holiday || c.term ? `<p class="cal-flags">${[c.holiday, c.term && `절기 ${c.term}`].filter(Boolean).join(' · ')}</p>` : ''}
     <p>${c.sonEmpty ? '<b>손 없는 날</b>입니다. 이사나 개업처럼 움직이는 일에 좋다고 여겨 온 날이에요.' : `손이 <b>${c.sonDir}쪽</b>에 있는 날입니다. 그 방향으로의 이사는 예부터 피했습니다.`}</p>
+    <p class="note">건제십이신 — <b>${off.ko}일(${off.hanja})</b> ${off.note}</p>
+    ${score ? `<p class="cal-score"><b>${score.total}점</b>${score.tier} · 내 그날 운세</p>` : ''}
     ${hasProfile && g ? `<h3 class="headline sm">${g.title}</h3><p>${g.text}</p><p class="note">${c.tenGod}의 날 · ${REL_TEXT[c.relation]}</p>` : ''}
   </div>`;
 }
@@ -1059,4 +1071,66 @@ export function matchView(me, people, other, result) {
       </div>
     </div>
   </section>`;
+}
+
+/* ───────── 택일 ───────── */
+function calTabs(active) {
+  return `<nav class="ptabs" aria-label="달력 보기">${[['/calendar', '달력'], ['/pick', '택일']].map(([h, l]) =>
+    `<a href="#${h}"${h === active ? ' aria-current="page"' : ''}>${l}</a>`).join('')}</nav>`;
+}
+
+const lunarText = (l) => `음력 ${l.leap ? '윤' : ''}${l.month}.${l.day}`;
+
+function pickItem(x, key, fromYear) {
+  const off = OFFICERS[x.info.officer];
+  const yr = x.year !== fromYear ? `${x.year}년 ` : '';
+  const why = x.highlights.slice(0, 3).join(' · ') || '무난한 날';
+  const move = key === 'move' && !x.info.sonEmpty ? ` · 손이 ${x.info.sonDir}쪽이니 그 방향 이사는 피하세요` : '';
+  return `<li class="pick-item">
+    <div class="pi-row">
+      <span class="pi-date"><b>${x.month}월 ${x.day}일</b><small>${yr}${WEEK[x.info.weekday]}요일 · ${lunarText(x.info.lunar)}</small></span>
+      <span class="pi-text"><b>${esc(why)}</b><small>${x.info.pillar.hanja}일 · ${off.ko}일(${off.hanja})${x.info.holiday ? ` · ${x.info.holiday}` : ''}${move}</small></span>
+      <span class="pi-score">${x.score}</span>
+    </div>
+    <details class="pi-why"><summary>점수가 나온 이유</summary>
+      <ul class="plain treasons"><li><span><b>기본 점수</b></span><em>64</em></li>${x.items.map((i) => `<li class="${i.delta > 0 ? 'up' : i.delta < 0 ? 'down' : ''}"><span><b>${esc(i.label)}</b><small>${esc(i.detail)}</small></span><em>${sign(i.delta)}</em></li>`).join('')}</ul>
+    </details>
+    <a class="link-btn" href="#/calendar" data-goto="${x.year}-${x.month}-${x.day}">달력에서 보기</a>
+  </li>`;
+}
+
+export function pickResult(profile, st, res) {
+  const P = PURPOSES[st.purpose];
+  const from = res.from;
+  const head = `<p class="kicker">${from.month}월 ${from.day}일부터 ${res.days}일 동안 ${P.ko}${res.withPartner ? ' · 두 사람 기준' : ''}</p>`;
+  const noteProfile = res.personal ? '' : '<p class="note"><a href="#/me">내 정보를 입력</a>하면 내 일지·띠와 충하는 날을 빼고 내 그날 운세 점수까지 반영해 드려요.</p>';
+  if (!res.best.length) {
+    return `${head}<p>이 기간에는 추천할 만한 날이 없어요. 기간을 더 길게 잡아 보세요.</p>${noteProfile}`;
+  }
+  return `${head}
+  <h3 class="headline sm">추천하는 날</h3>
+  <ol class="plain pick-list">${res.best.map((x) => pickItem(x, st.purpose, from.year)).join('')}</ol>
+  ${res.more.length ? `<details class="more-read"><summary>다음으로 좋은 날 ${res.more.length}일 더 보기</summary><ol class="plain pick-list" start="6">${res.more.map((x) => pickItem(x, st.purpose, from.year)).join('')}</ol></details>` : ''}
+  ${res.avoid.length ? `<details class="more-read"><summary>피하면 좋은 날 ${res.avoid.length}일</summary><ul class="plain avoid-list">${res.avoid.map((x) => `<li><b>${x.year !== from.year ? x.year + '년 ' : ''}${x.month}월 ${x.day}일 ${WEEK[x.info.weekday]}</b><span>${esc(x.flags.join(' · '))}</span></li>`).join('')}</ul></details>` : ''}
+  <p class="note">${P.note}</p>
+  ${noteProfile}
+  <p class="note">건제십이신과 손 없는 날은 옛 택일서의 설명을 바탕으로 하며, 책마다 다르게 적힌 부분이 있어요. 참고로만 봐 주세요.</p>`;
+}
+
+export function pickView(profile, people, st, res) {
+  const chips = `<div class="chips" role="radiogroup" aria-label="목적">${PURPOSE_KEYS.map((k) =>
+    `<label><input type="radio" name="purpose" value="${k}"${st.purpose === k ? ' checked' : ''}><span>${PURPOSES[k].ko}</span></label>`).join('')}</div>`;
+  const periods = [30, 90, 180].map((n) => `<label><input type="radio" name="days" value="${n}"${st.days === n ? ' checked' : ''}><span>${n}일</span></label>`).join('');
+  const partner = people.length
+    ? `<label class="field"><span>함께하는 사람 <em>선택 · 두 사람의 일지까지 봐요</em></span>
+        <select name="partner"><option value="">없음</option>${people.map((p) => `<option value="${p.id}"${st.partner === p.id ? ' selected' : ''}>${esc(p.name)} · ${esc(p.relation || '')}</option>`).join('')}</select></label>`
+    : '<p class="note">함께하는 사람이 있다면 <a href="#/person/new">저장한 사람으로 추가</a>해 두 사람의 일지까지 함께 볼 수 있어요.</p>';
+  return `<div class="page-head"><h1>택일 <span class="h1-hanja">擇日</span></h1></div>
+  ${calTabs('/pick')}
+  <form class="form pick-form" id="pickForm" autocomplete="off" novalidate>
+    <fieldset class="field"><legend>무엇을 하는 날인가요</legend>${chips}</fieldset>
+    <fieldset class="field"><legend>찾을 기간 <em>오늘부터</em></legend><div class="seg seg3" role="radiogroup" aria-label="기간">${periods}</div></fieldset>
+    ${partner}
+  </form>
+  <div class="pick-out" id="pickOut">${pickResult(profile, st, res)}</div>`;
 }

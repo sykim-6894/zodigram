@@ -680,3 +680,46 @@ fieldset.field legend em { font-style: normal; color: var(--ink-3); margin-left:
 .pl-act a { color: var(--ink-2); }
 .pl-act a:first-child { color: var(--east); }
 .sec.people .btn { margin-top: 12px; }
+
+/* ── 택일 · 달력 점수 색 ── */
+.cal-cell.hi { background: color-mix(in srgb, var(--el-wood) var(--t, 12%), transparent); }
+.cal-cell.lo { background: color-mix(in srgb, var(--east) var(--t, 8%), transparent); }
+.cal-cell.sel.hi, .cal-cell.sel.lo { box-shadow: inset 0 0 0 1px var(--ink-2); }
+.cal-legend .lg { width: 16px; height: 12px; border-radius: 2px; border: 1px solid var(--rule); }
+.cal-legend .lg.hi { background: color-mix(in srgb, var(--el-wood) 22%, transparent); }
+.cal-legend .lg.lo { background: color-mix(in srgb, var(--east) 12%, transparent); }
+.cal-score { font: 600 16px/1.4 var(--serif); margin: 4px 0 8px; }
+.cal-score b { font-size: 24px; margin-right: 4px; font-variant-numeric: tabular-nums; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips label, .seg label { position: relative; }
+.chips input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.chips span { display: block; padding: 8px 16px; border: 1px solid var(--rule); border-radius: 2px; font-size: 15px; cursor: pointer; transition: background-color .16s cubic-bezier(0.22, 1, 0.36, 1), color .16s cubic-bezier(0.22, 1, 0.36, 1); }
+.chips span:hover { border-color: var(--ink-2); }
+.chips input:checked + span { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chips input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pick-form { max-width: 640px; margin-top: 24px; }
+.pick-form .field select {
+  width: 100%; height: 46px; padding: 0 12px; font: 16px var(--sans); color: var(--ink);
+  background: transparent; border: 1px solid var(--rule); border-bottom-color: var(--ink-2); border-radius: 0;
+}
+.pick-out { padding: 8px 0 24px; border-top: 1px solid var(--ink); margin-top: 8px; padding-top: 24px; }
+.pick-list { counter-reset: pick; }
+.pick-item { padding: 16px 0 12px; }
+.pi-row { display: grid; grid-template-columns: 112px 1fr 44px; gap: 16px; align-items: baseline; }
+.pi-date b { display: block; font: 600 18px/1.4 var(--serif); }
+.pi-date small, .pi-text small { display: block; font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+.pi-text b { display: block; font: 500 15px/1.5 var(--sans); }
+.pi-score { font: 600 24px/1 var(--serif); text-align: right; color: var(--east); font-variant-numeric: tabular-nums; }
+.pi-why { margin-top: 8px; }
+.pi-why summary { cursor: pointer; font-size: 13px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; width: max-content; }
+.pi-why[open] summary { margin-bottom: 8px; }
+.pick-item .link-btn { display: inline-block; margin-top: 8px; font-size: 13px; }
+.avoid-list li { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 8px 0; font-size: 14px; }
+.avoid-list li b { font-weight: 500; }
+.avoid-list li span { color: var(--ink-2); }
+@media (max-width: 520px) {
+  .pi-row { grid-template-columns: 96px 1fr 36px; gap: 12px; }
+  .pi-date b { font-size: 16px; }
+  .avoid-list li { grid-template-columns: 96px 1fr; }
+}

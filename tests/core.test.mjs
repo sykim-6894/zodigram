@@ -405,3 +405,49 @@ test('궁합: 50~100, 근거 합계, 대칭에 가까움, 천간합·충 반영'
   // 시각이 없는 사람과도 계산된다
   assert.ok(computeMatch(a, { name: '다', year: 1995, month: 1, day: 1 }).west.uncertain);
 });
+
+import { officerOf } from '../public/assets/js/core/almanac.js';
+import { findDays, evaluateDay } from '../public/assets/js/core/pick.js';
+import { OFFICERS, PURPOSE_KEYS } from '../public/assets/js/data/pick-text.js';
+
+test('건제십이신: 건일은 일지=월건, 절입일 반복, 1년에 고르게', () => {
+  // 2026-11-09 丁亥일은 월건(亥월)과 같은 지지 → 건
+  assert.equal(OFFICERS[officerOf(2026, 11, 9)].ko, '건');
+  assert.equal(OFFICERS[officerOf(2026, 11, 13)].ko, '정');
+  for (const t of solarTermsOfYear(2026)) {
+    if (t.day > 1) assert.equal(officerOf(2026, t.month, t.day), officerOf(2026, t.month, t.day - 1), `${t.name} 절입일`);
+  }
+  const cnt = {};
+  for (let k = 0; k < 365; k++) { const t = new Date(Date.UTC(2026, 0, 1 + k)); const n = officerOf(2026, t.getUTCMonth() + 1, t.getUTCDate()); cnt[n] = (cnt[n] || 0) + 1; }
+  assert.equal(Object.keys(cnt).length, 12);
+  for (const v of Object.values(cnt)) assert.ok(v >= 25 && v <= 36);
+});
+
+test('택일: 점수 범위·근거 합계·피할 날·정렬', () => {
+  const me = { name: '나', year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울' };
+  const mate = { name: '민수', year: 1988, month: 11, day: 3, hour: 7, minute: 0, place: '부산' };
+  const from = { year: 2026, month: 11, day: 18 };
+  for (const key of PURPOSE_KEYS) {
+    const r = findDays(key, { profile: me, partner: mate, days: 60, from });
+    assert.equal(r.all.length, 60);
+    for (const x of r.all) {
+      assert.ok(x.score >= 50 && x.score <= 100);
+      assert.equal(x.score, Math.max(50, Math.min(100, 64 + x.items.reduce((a, i) => a + i.delta, 0))));
+      if (x.info.officer === 6) assert.ok(x.avoid, '파일은 피할 날');
+    }
+    for (let i = 1; i < r.best.length; i++) assert.ok(r.best[i - 1].score >= r.best[i].score);
+    assert.ok(r.best.every((x) => !x.avoid));
+  }
+  // 내 일지(辰)와 충하는 戌일은 이사에서 피할 날
+  const day = evaluateDay('move', 2026, 11, 20, { profile: me, saju: undefined });
+  assert.equal(day.avoid, false); // saju 없이는 개인 충을 따지지 않는다
+  const full = findDays('move', { profile: me, days: 30, from });
+  assert.ok(full.avoid.some((x) => x.flags.some((f) => f.includes('일지와 충'))));
+  // 생년월일이 없어도 동작
+  const g = findDays('wedding', { days: 30, from });
+  assert.equal(g.personal, false);
+  assert.ok(g.best.length > 0);
+  // 손 없는 날은 이사에서 가점
+  const son = g.all.find((x) => x.info.sonEmpty);
+  assert.ok(son.items.some((i) => i.label === '손 없는 날' && i.delta === 10) || son.key !== 'move');
+});

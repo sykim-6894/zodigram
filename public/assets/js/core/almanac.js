@@ -39,6 +39,17 @@ function holidayOf(m, d, lunar) {
 // 음력 날짜 끝자리로 보는 '손'(이동하며 해를 끼친다는 귀신)의 방향
 const SON_DIR = ['없음', '동', '동', '남', '남', '서', '서', '북', '북', '없음'];
 
+/**
+ * 건제십이신 번호(0 건 · 1 제 · 2 만 · 3 평 · 4 정 · 5 집 · 6 파 · 7 위 · 8 성 · 9 수 · 10 개 · 11 폐).
+ * 월건(절기로 나눈 달의 지지)과 같은 지지의 날이 '건'이고, 하루 지날 때마다 다음 신으로 간다.
+ * 절입(節入)이 든 날은 하루 전체를 새 달로 보기 때문에 전날과 같은 신이 한 번 더 반복된다.
+ */
+export function officerOf(y, m, d) {
+  const lon = sunLongitude(julianDate(y, m, d, 23, 59, 9));
+  const monthBranch = (Math.floor((((lon - 315) % 360) + 360) % 360 / 30) + 2) % 12; // 寅월 = 2
+  return (((dayPillar(y, m, d).branch - monthBranch) % 12) + 12) % 12;
+}
+
 /** 하루 정보 */
 export function dayInfo(y, m, d, saju = null) {
   const lunar = solarToLunar(y, m, d);
@@ -52,6 +63,7 @@ export function dayInfo(y, m, d, saju = null) {
     holiday: holidayOf(m, d, lunar),
     sonEmpty: sonDir === '없음',
     sonDir,
+    officer: officerOf(y, m, d),
   };
   if (saju) {
     info.relation = branchRelation(saju.pillars.day.branch, pillar.branch);

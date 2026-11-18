@@ -10,6 +10,7 @@ import { getToday } from './core/fortune.js';
 import { manseLookup } from './core/manse.js';
 import { getYear, getMonth, getQuarter } from './core/period.js';
 import { getTopics } from './core/topics.js';
+import { findDays } from './core/pick.js';
 import { prepareCard, shareCard, shareLink, downloadCard, uploadCard, shareCardLink, copyLink, prepareMatchCard } from './ui/share.js';
 import * as V from './ui/views.js';
 
@@ -18,6 +19,13 @@ const view = document.getElementById('view');
 // 달력 화면 상태(보고 있는 달, 고른 날)
 const nowKst = getToday().date;
 const cal = { year: nowKst.year, month: nowKst.month, sel: nowKst.day };
+
+// 택일 입력 상태
+let pick = { purpose: 'move', days: 90, partner: '' };
+function pickRes() {
+  const partner = pick.partner ? getPerson(pick.partner) : null;
+  return findDays(pick.purpose, { profile: loadProfile(), partner, days: pick.days });
+}
 
 // 만세력 입력 상태(처음엔 지금 시각)
 const pad = (n) => String(n).padStart(2, '0');
@@ -41,6 +49,7 @@ const routes = {
   '/west': () => V.westView(loadProfile()),
   '/west/tarot': () => V.tarotView(),
   '/calendar': () => V.calendarView(loadProfile(), cal, cal.sel),
+  '/pick': () => V.pickView(loadProfile(), loadPeople(), pick, pickRes()),
   '/manse': () => V.manseView(manse),
   '/me': () => V.meView(loadProfile(), 'me', loadPeople()),
   '/person': () => V.meView(routeParam === 'new' ? null : getPerson(routeParam), 'person'),
@@ -55,6 +64,7 @@ const binders = {
   '/east/iching': bindIching,
   '/west/tarot': bindTarot,
   '/calendar': bindCalendar,
+  '/pick': bindPick,
   '/manse': bindManse,
   '/': bindShare,
 };
@@ -115,12 +125,29 @@ function render() {
   document.body.dataset.route = path.split('/')[1] || 'home';
   document.querySelectorAll('[data-nav]').forEach((a) => {
     const target = a.getAttribute('href').replace(/^#/, '');
-    const active = target === '/' ? HOME_PATHS.includes(path) : path.startsWith(target) || (target === '/me' && path === '/person');
+    const active = target === '/' ? HOME_PATHS.includes(path) : path.startsWith(target) || (target === '/me' && path === '/person') || (target === '/calendar' && path === '/pick');
     a.toggleAttribute('aria-current', active);
     if (active) a.setAttribute('aria-current', 'page');
   });
   binders[path]?.();
   window.scrollTo(0, 0);
+}
+
+/* 택일 */
+function bindPick() {
+  const form = document.getElementById('pickForm');
+  const out = document.getElementById('pickOut');
+  const links = () => document.querySelectorAll('[data-goto]').forEach((a) => a.addEventListener('click', () => {
+    // 눌러서 이동하기 전에 달력이 그 날짜를 보여 주도록 상태를 맞춘다
+    const [y, m, d] = a.dataset.goto.split('-').map(Number);
+    cal.year = y; cal.month = m; cal.sel = d;
+  }));
+  form.addEventListener('change', () => {
+    pick = { purpose: form.elements.purpose.value, days: Number(form.elements.days.value), partner: form.elements.partner ? form.elements.partner.value : '' };
+    out.innerHTML = V.pickResult(loadProfile(), pick, pickRes());
+    links();
+  });
+  links();
 }
 
 /* 길일 달력 */
