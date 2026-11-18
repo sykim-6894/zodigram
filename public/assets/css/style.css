@@ -723,3 +723,35 @@ fieldset.field legend em { font-style: normal; color: var(--ink-3); margin-left:
   .pi-date b { font-size: 16px; }
   .avoid-list li { grid-template-columns: 96px 1fr; }
 }
+
+/* ── 보관함 ── */
+.save-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0 0; }
+.save-note { font-size: 14px; color: var(--ink-3); min-height: 1.4em; }
+.save-note a { color: var(--east); }
+.btn.ghost[disabled] { opacity: .6; cursor: default; }
+.link-btn[disabled] { color: var(--ink-3); text-decoration: none; cursor: default; }
+.field textarea {
+  width: 100%; padding: 12px; font: 16px/1.6 var(--sans); color: var(--ink); resize: vertical;
+  background: transparent; border: 1px solid var(--rule); border-bottom-color: var(--ink-2); border-radius: 0;
+}
+.field textarea:focus { outline: none; border-color: var(--ink); }
+.vault-streak { margin: 0 0 16px; font-size: 15px; color: var(--ink-2); }
+.vault-streak b { font: 600 28px/1 var(--serif); color: var(--ink); margin-right: 4px; font-variant-numeric: tabular-nums; }
+.trend { display: block; width: 100%; max-width: 640px; height: auto; }
+.tr-grid { stroke: var(--rule); stroke-width: 1; }
+.tr-lbl { font: 11px var(--sans); fill: var(--ink-3); }
+.tr-line { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.tr-hi { fill: var(--el-wood); }
+.tr-lo { fill: var(--east); }
+.tr-now { fill: var(--ink); stroke: var(--paper); stroke-width: 2; }
+.trend-note { margin: 8px 0 0; }
+.vault-list li { padding: 0; }
+.vault-list a { display: grid; grid-template-columns: 32px 1fr auto; gap: 16px; align-items: center; padding: 16px 0; text-decoration: none; color: inherit; }
+.vault-list a:hover .vi-text b { text-decoration: underline; text-underline-offset: 3px; }
+.vi-mark { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--ink-2); border-radius: 2px; font: 600 15px/1 var(--serif); color: var(--ink-2); }
+.vi-text b { display: block; font: 600 16px/1.4 var(--serif); }
+.vi-text small { display: block; font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+.vi-extra { font: 600 14px/1 var(--serif); color: var(--east); font-variant-numeric: tabular-nums; }
+.vault-empty { margin: 16px 0 0; }
+#vaultFilter { margin-bottom: 8px; }
+.vault-memo .field { max-width: 560px; }

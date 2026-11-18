@@ -121,7 +121,7 @@ export function findDays(key, { profile = null, partner = null, days = 90, from 
   }
   const good = all.filter((x) => !x.avoid).sort((a, b) => b.score - a.score || (a.year * 400 + a.month * 31 + a.day) - (b.year * 400 + b.month * 31 + b.day));
   const avoid = all.filter((x) => x.avoid);
-  return { key, from: start, days, base, all, best: good.slice(0, 5), more: good.slice(5, 15), avoid, personal: !!profile, withPartner: !!partner };
+  return { key, from: start, days, base, partnerName: partner ? partner.name : '', all, best: good.slice(0, 5), more: good.slice(5, 15), avoid, personal: !!profile, withPartner: !!partner };
 }
 
 export { PURPOSES, PURPOSE_KEYS, tierOf };

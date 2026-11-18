@@ -1,5 +1,6 @@
 // 해시 라우터 + 화면 상호작용. GitHub Pages 하위 경로에서도 동작하도록 해시(#/)를 쓴다.
-import { loadProfile, saveProfile, clearProfile, loadPeople, getPerson, savePerson, deletePerson } from './core/storage.js';
+import { loadProfile, saveProfile, clearProfile, loadPeople, getPerson, savePerson, deletePerson, loadVault, addVaultItem, updateVaultItem, deleteVaultItem, getVaultItem, recordVisit, loadVisits } from './core/storage.js';
+import { ichingItem, tarotItem, matchItem, dayItem } from './core/vault.js';
 import { computeMatch } from './core/match.js';
 import { tossLine, readCast } from './core/iching.js';
 import { trueRandom, shuffle } from './core/seed.js';
@@ -19,6 +20,40 @@ const view = document.getElementById('view');
 // 달력 화면 상태(보고 있는 달, 고른 날)
 const nowKst = getToday().date;
 const cal = { year: nowKst.year, month: nowKst.month, sel: nowKst.day };
+
+// 보관함 목록 필터
+let vaultFilter = 'all';
+
+function vaultItemPage() {
+  const item = routeParam ? getVaultItem(routeParam) : null;
+  if (!item) return `<div class="page-head"><h1>보관함</h1></div><p>저장한 항목을 찾을 수 없어요.</p><a class="btn ghost" href="#/vault">보관함으로</a>`;
+  return V.vaultDetail(item, loadPeople(), getToday().date);
+}
+
+// 저장 버튼 공통 처리: 저장하고, 결과를 버튼 옆에 알린다
+function bindSave(id, make) {
+  const btn = document.getElementById(id);
+  const note = document.getElementById(`${id}Note`);
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const r = addVaultItem(make());
+    if (r.ok) {
+      btn.disabled = true;
+      btn.textContent = '저장했어요';
+      if (note) note.innerHTML = '<a href="#/vault">보관함 보기</a>';
+    } else if (note) {
+      note.textContent = r.reason === 'full' ? '보관함이 가득 찼어요(200개). 보관함에서 오래된 항목을 지워 주세요.' : '저장하지 못했어요. 브라우저의 저장 공간을 확인해 주세요.';
+    }
+  });
+}
+
+// 달력으로 가는 링크: 이동 전에 달력이 그 날짜를 보여 주도록 상태를 맞춘다
+function bindGoto() {
+  document.querySelectorAll('[data-goto]').forEach((a) => a.addEventListener('click', () => {
+    const [y, m, d] = a.dataset.goto.split('-').map(Number);
+    cal.year = y; cal.month = m; cal.sel = d;
+  }));
+}
 
 // 택일 입력 상태
 let pick = { purpose: 'move', days: 90, partner: '' };
@@ -49,7 +84,9 @@ const routes = {
   '/west': () => V.westView(loadProfile()),
   '/west/tarot': () => V.tarotView(),
   '/calendar': () => V.calendarView(loadProfile(), cal, cal.sel),
-  '/pick': () => V.pickView(loadProfile(), loadPeople(), pick, pickRes()),
+  '/pick': () => V.pickView(loadProfile(), loadPeople(), pick, pickRes(), loadVault()),
+  '/vault': () => V.vaultView(loadVault(), vaultFilter, loadProfile(), getToday().date, loadVisits()),
+  '/vault/item': () => vaultItemPage(),
   '/manse': () => V.manseView(manse),
   '/me': () => V.meView(loadProfile(), 'me', loadPeople()),
   '/person': () => V.meView(routeParam === 'new' ? null : getPerson(routeParam), 'person'),
@@ -65,6 +102,8 @@ const binders = {
   '/west/tarot': bindTarot,
   '/calendar': bindCalendar,
   '/pick': bindPick,
+  '/vault': bindVault,
+  '/vault/item': bindVaultItem,
   '/manse': bindManse,
   '/': bindShare,
 };
@@ -98,6 +137,8 @@ function currentPath() {
   if (m) { routeParam = m[1]; return '/person'; }
   m = h.match(/^\/match(?:\/([a-z0-9]+))?$/);
   if (m) { routeParam = m[1] || null; return '/match'; }
+  m = h.match(/^\/vault(?:\/(v[a-z0-9]+))?$/);
+  if (m) { routeParam = m[1] || null; return routeParam ? '/vault/item' : '/vault'; }
   return '/';
 }
 
@@ -116,6 +157,7 @@ function bindMatch() {
   const me = loadProfile();
   const people = loadPeople();
   const other = (routeParam && getPerson(routeParam)) || people[0];
+  bindSave('saveMatch', () => matchItem(me, other, computeMatch(me, other)));
   bindCardShare(() => prepareMatchCard(me, other, computeMatch(me, other)));
 }
 
@@ -125,7 +167,7 @@ function render() {
   document.body.dataset.route = path.split('/')[1] || 'home';
   document.querySelectorAll('[data-nav]').forEach((a) => {
     const target = a.getAttribute('href').replace(/^#/, '');
-    const active = target === '/' ? HOME_PATHS.includes(path) : path.startsWith(target) || (target === '/me' && path === '/person') || (target === '/calendar' && path === '/pick');
+    const active = target === '/' ? HOME_PATHS.includes(path) : path.startsWith(target) || (target === '/me' && (path === '/person' || path.startsWith('/vault'))) || (target === '/calendar' && path === '/pick');
     a.toggleAttribute('aria-current', active);
     if (active) a.setAttribute('aria-current', 'page');
   });
@@ -133,18 +175,60 @@ function render() {
   window.scrollTo(0, 0);
 }
 
+/* 보관함 */
+function bindVault() {
+  const chips = document.getElementById('vaultFilter');
+  chips.addEventListener('change', (ev) => {
+    vaultFilter = ev.target.value;
+    document.getElementById('vaultList').innerHTML = V.vaultList(loadVault(), vaultFilter, getToday().date);
+  });
+}
+
+function bindVaultItem() {
+  bindGoto();
+  const item = routeParam ? getVaultItem(routeParam) : null;
+  if (!item) return;
+  const memo = document.getElementById('vaultMemo');
+  const note = document.getElementById('memoNote');
+  memo.addEventListener('change', () => {
+    updateVaultItem(item.id, { memo: memo.value.trim() });
+    note.textContent = '메모를 저장했어요';
+  });
+  const del = document.getElementById('vaultDelete');
+  let armed = null;
+  del.addEventListener('click', () => {
+    if (!armed) {
+      // 실수로 지우지 않도록 한 번 더 누르게 한다
+      del.textContent = '한 번 더 누르면 삭제돼요';
+      armed = setTimeout(() => { armed = null; del.textContent = '삭제'; }, 4000);
+      return;
+    }
+    clearTimeout(armed);
+    deleteVaultItem(item.id);
+    location.hash = '#/vault';
+  });
+}
+
 /* 택일 */
 function bindPick() {
   const form = document.getElementById('pickForm');
   const out = document.getElementById('pickOut');
-  const links = () => document.querySelectorAll('[data-goto]').forEach((a) => a.addEventListener('click', () => {
-    // 눌러서 이동하기 전에 달력이 그 날짜를 보여 주도록 상태를 맞춘다
-    const [y, m, d] = a.dataset.goto.split('-').map(Number);
-    cal.year = y; cal.month = m; cal.sel = d;
-  }));
+  const links = bindGoto;
+  // 결과가 다시 그려져도 동작하도록 결과 영역에서 클릭을 받는다
+  out.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-save-day]');
+    if (!b || b.disabled) return;
+    const [y, m, d] = b.dataset.saveDay.split('-').map(Number);
+    const res = pickRes();
+    const x = res.all.find((a) => a.year === y && a.month === m && a.day === d);
+    if (!x) return;
+    const r = addVaultItem(dayItem(pick.purpose, x, res.partnerName));
+    b.disabled = true;
+    b.textContent = r.ok ? '보관함에 저장됨' : r.reason === 'full' ? '보관함이 가득 찼어요' : '저장하지 못했어요';
+  });
   form.addEventListener('change', () => {
     pick = { purpose: form.elements.purpose.value, days: Number(form.elements.days.value), partner: form.elements.partner ? form.elements.partner.value : '' };
-    out.innerHTML = V.pickResult(loadProfile(), pick, pickRes());
+    out.innerHTML = V.pickResult(loadProfile(), pick, pickRes(), loadVault());
     links();
   });
   links();
@@ -398,7 +482,9 @@ function bindIching() {
     if (values.length === 6) {
       btn.hidden = true;
       reset.hidden = false;
-      result.innerHTML = V.castResultHtml(readCast(values), document.getElementById('q').value.trim());
+      const question = document.getElementById('q').value.trim();
+      result.innerHTML = V.castResultHtml(readCast(values), question, true);
+      bindSave('saveCast', () => ichingItem(values, question));
       result.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   });
@@ -430,12 +516,15 @@ function bindTarot() {
       deckEl.classList.add('done');
       readingEl.innerHTML = chosen.map((c, i) => `<div class="reading-item"><h3 class="headline sm">${positions[i]}</h3>${V.tarotReading(c.card, c.reversed)}</div>`).join('');
       again.hidden = false;
+      document.getElementById('tarotSave').hidden = false;
+      bindSave('saveTarot', () => tarotItem(chosen));
     }
   });
   again.addEventListener('click', render);
 }
 
 window.addEventListener('hashchange', render);
+recordVisit(getToday().key);
 render();
 
 // 자정이 지나면 오늘 내용을 새로 그린다(앱을 켜 둔 채 날이 바뀌는 경우)
@@ -443,6 +532,7 @@ let lastDay = new Date().toDateString();
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && new Date().toDateString() !== lastDay) {
     lastDay = new Date().toDateString();
+    recordVisit(getToday().key);
     render();
   }
 });

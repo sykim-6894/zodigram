@@ -451,3 +451,84 @@ test('택일: 점수 범위·근거 합계·피할 날·정렬', () => {
   const son = g.all.find((x) => x.info.sonEmpty);
   assert.ok(son.items.some((i) => i.label === '손 없는 날' && i.delta === 10) || son.key !== 'move');
 });
+
+// ── 보관함 ──
+// Node에는 localStorage가 없으므로 메모리로 흉내 낸다
+globalThis.localStorage = (() => {
+  const m = new Map();
+  return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), clear: () => m.clear() };
+})();
+
+const storage = await import('../public/assets/js/core/storage.js');
+const vault = await import('../public/assets/js/core/vault.js');
+
+test('보관함: 저장·조회·메모·삭제와 개수 제한', () => {
+  localStorage.clear();
+  const a = storage.addVaultItem(vault.ichingItem([9, 7, 7, 7, 7, 7], '  이직해도 될까?  '));
+  assert.ok(a.ok);
+  assert.equal(a.item.title, '1. 중천건 → 44. 천풍구'); // 초효가 변하는 건괘 → 구괘
+  assert.equal(a.item.data.question, '이직해도 될까?');
+  const b = storage.addVaultItem(vault.tarotItem([{ card: { n: 0, ko: '바보' }, reversed: false }, { card: { n: 6, ko: '연인' }, reversed: true }, { card: { n: 17, ko: '별' }, reversed: false }]));
+  assert.equal(b.item.title, '바보 · 연인(역) · 별');
+  const list = storage.loadVault();
+  assert.equal(list.length, 2);
+  assert.ok(list[0].created >= list[1].created); // 최신순
+  storage.updateVaultItem(a.item.id, { memo: '다음 달에 다시 보기' });
+  assert.equal(storage.getVaultItem(a.item.id).memo, '다음 달에 다시 보기');
+  storage.deleteVaultItem(a.item.id);
+  assert.equal(storage.getVaultItem(a.item.id), null);
+  assert.equal(storage.loadVault().length, 1);
+  // 가득 차면 거절한다
+  localStorage.clear();
+  for (let i = 0; i < storage.VAULT_LIMIT; i++) assert.ok(storage.addVaultItem({ kind: 'tarot', title: `t${i}`, memo: '', data: {} }).ok);
+  const full = storage.addVaultItem({ kind: 'tarot', title: 'x', memo: '', data: {} });
+  assert.deepEqual([full.ok, full.reason], [false, 'full']);
+  // 손상된 저장값은 무시한다
+  localStorage.setItem('zodigram.vault.v1', '{깨진 값');
+  assert.deepEqual(storage.loadVault(), []);
+});
+
+test('보관함: 궁합·택일 항목, 중복 확인, D-day', () => {
+  const me = { name: '나', year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울' };
+  const other = { id: 'p1', name: '민수', relation: '친구', year: 1988, month: 11, day: 3, hour: 7, minute: 0, place: '부산' };
+  const r = computeMatch(me, other);
+  const m = vault.matchItem(me, other, r);
+  assert.equal(m.title, '나 × 민수');
+  assert.equal(m.data.total, r.total);
+  assert.ok(m.data.east.items.length <= 4 && m.data.west.items.length <= 4);
+  const found = findDays('move', { profile: me, days: 30, from: { year: 2026, month: 11, day: 18 } });
+  const x = found.best[0];
+  const d = vault.dayItem('move', x, '');
+  assert.equal(d.data.score, x.score);
+  assert.ok(d.title.includes('이사'));
+  assert.equal(vault.hasDayItem([d], 'move', x, ''), true);
+  assert.equal(vault.hasDayItem([d], 'wedding', x, ''), false);
+  assert.equal(vault.hasDayItem([d], 'move', x, '민수'), false);
+  const today = { year: 2026, month: 11, day: 18 };
+  assert.equal(vault.daysUntil(2026, 11, 18, today), 0);
+  assert.equal(vault.daysUntil(2026, 12, 1, today), 13);
+  assert.equal(vault.daysUntil(2026, 11, 10, today), -8);
+});
+
+test('내 기록: 연속 방문, 점수 흐름', () => {
+  localStorage.clear();
+  const today = { year: 2026, month: 11, day: 18 };
+  for (const k of ['2026-11-14', '2026-11-16', '2026-11-17', '2026-11-18']) storage.recordVisit(k);
+  storage.recordVisit('2026-11-18'); // 같은 날 두 번 기록해도 한 번
+  const visits = storage.loadVisits();
+  assert.equal(visits.length, 4);
+  assert.equal(vault.streak(visits, today), 3); // 16·17·18일 (15일이 비어 끊김)
+  assert.equal(vault.streak(['2026-11-16', '2026-11-17'], today), 2); // 오늘 기록 전이면 어제부터
+  assert.equal(vault.streak([], today), 0);
+  assert.equal(vault.monthVisits(visits, 2026, 11), 4);
+  const me = { year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울' };
+  const hist = vault.scoreHistory(me, today, 30);
+  assert.equal(hist.length, 30);
+  assert.equal(`${hist[29].month}-${hist[29].day}`, '11-18');
+  assert.equal(`${hist[0].month}-${hist[0].day}`, '10-20');
+  for (const h of hist) assert.ok(h.total >= 50 && h.total <= 100);
+  const s = vault.summarize(hist);
+  assert.ok(s.best.total >= s.avg && s.worst.total <= s.avg);
+  assert.deepEqual(vault.scoreHistory(null, today), []);
+  assert.equal(vault.summarize([]), null);
+});

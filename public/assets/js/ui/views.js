@@ -11,6 +11,9 @@ import { chartWheel } from './chart.js';
 import { ziweiChart, ziweiYear } from '../core/ziwei.js';
 import { getTopics } from '../core/topics.js';
 import { monthScores } from '../core/pick.js';
+import { readCast } from '../core/iching.js';
+import { MAJOR_ARCANA, SPREAD_POSITIONS } from '../data/tarot.js';
+import { KINDS, KIND_KEYS, daysUntil, scoreHistory, summarize, streak, monthVisits, hasDayItem } from '../core/vault.js';
 import { PURPOSES, PURPOSE_KEYS, OFFICERS } from '../data/pick-text.js';
 import { TOPIC_KEYS, TOPICS as TOPICS_INFO } from '../data/topic-text.js';
 import { STARS as ZW_STARS, PALACES as ZW_PALACES, SIHUA_TEXT as ZW_SIHUA } from '../data/ziwei-text.js';
@@ -270,7 +273,7 @@ export function ichingView() {
   <div class="page-head east">${sideLabel('east')}<h1>주역 점</h1></div>
   <section class="sec">
     <p>묻고 싶은 일을 한 문장으로 떠올린 뒤 동전을 여섯 번 던지세요. 아래 효부터 위로 쌓입니다.</p>
-    <label class="field"><span>질문 (저장되지 않습니다)</span><input id="q" type="text" maxlength="80" placeholder="예) 이번 이직을 진행해도 될까?"></label>
+    <label class="field"><span>질문 (보관함에 저장할 때만 기록돼요)</span><input id="q" type="text" maxlength="80" placeholder="예) 이번 이직을 진행해도 될까?"></label>
     <div class="cast">
       <div class="cast-lines" id="castLines"></div>
       <div class="cast-side">
@@ -287,7 +290,7 @@ export function ichingView() {
   </section>`;
 }
 
-export function castResultHtml(res, question) {
+export function castResultHtml(res, question, withSave = false) {
   const p = res.primary;
   const r = res.relating;
   return `<div class="cast-result">
@@ -301,6 +304,7 @@ export function castResultHtml(res, question) {
         <h3 class="headline sm">${r.keyword}</h3><p>${r.text}</p></div></div>` : ''}
     </div>
     <p class="note">${r ? `변하는 효 ${res.changing.length}개. 지금은 「${p.keyword}」의 때이고, 「${r.keyword}」 쪽으로 흘러갑니다.` : '변하는 효가 없습니다. 본괘의 뜻이 그대로 오래 이어집니다.'}</p>
+    ${withSave ? saveRow('saveCast') : ''}
   </div>`;
 }
 
@@ -401,6 +405,7 @@ export function tarotView() {
     <div class="deck" id="deck"></div>
     <div id="reading"></div>
     <button class="btn ghost west" id="reshuffle" hidden>다시 섞기</button>
+    <div id="tarotSave" hidden>${saveRow('saveTarot')}</div>
   </section>`;
 }
 
@@ -417,6 +422,7 @@ export function meView(profile, mode = 'me', people = []) {
   const l = p.lunar || {};
   const opts = (n, sel) => Array.from({ length: n }, (_, i) => `<option value="${i + 1}"${sel === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('');
   return `<div class="page-head">${isPerson ? '<p class="kicker"><a href="#/me">내 정보</a> · 저장한 사람</p>' : ''}<h1>${isPerson ? (p.id ? `${esc(p.name)} 정보 수정` : '사람 추가') : '내 정보'}</h1></div>
+  ${isPerson ? '' : meTabs('/me')}
   <form class="form" id="profileForm" autocomplete="off" novalidate>
     <label class="field"><span>이름 또는 별명 <em>${isPerson ? '필수' : '선택'}</em></span><input name="name" maxlength="20" value="${esc(p.name || '')}" ${isPerson ? 'required' : ''}></label>
     ${isPerson ? `<label class="field"><span>관계</span><select name="relation">${RELATIONS.map((r) => `<option${(p.relation || RELATIONS[0]) === r ? ' selected' : ''}>${r}</option>`).join('')}</select></label>` : ''}
@@ -485,6 +491,7 @@ export function aboutView() {
     <div>${secHead('동양', '東')}
       <ul class="plain">
         <li><b>사주</b> — 연주는 입춘, 월주는 12절기의 절입 시각(태양 황경)으로 나눕니다. 태어난 시각은 당시 표준시(1908~1961년의 UTC+8:30 시기 포함)와 서머타임(1948~51, 1955~60, 1987~88)을 바로잡은 뒤, 태어난 곳 경도의 태양시로 시주를 정합니다.</li>
+        <li><b>보관함</b> — 주역 점, 타로, 궁합, 택일 결과를 이 기기에 저장해 다시 보고 메모를 남깁니다. 서버로 보내지 않으며, 점수 흐름은 저장하지 않고 날짜로 다시 계산합니다.</li>
         <li><b>택일</b> — 건제십이신(건·제·만·평·정·집·파·위·성·수·개·폐), 손 없는 날, 요일, 내 일지·띠와의 충합, 수성 역행, 차오르는 달, 내 그날 운세 점수로 이사·결혼·개업·계약·여행·새 출발에 좋은 날을 고릅니다. 옛 택일서의 설명을 바탕으로 해서 책마다 다른 부분이 있어요.</li>
         <li><b>만세력</b> — 1900~2100년 어느 날짜·시각이든 네 기둥, 음력, 절기 구간을 조회할 수 있습니다.</li>
         <li><b>일진</b> — 오늘의 천간이 내 일간에게 어떤 십신인지로 하루의 성격을 봅니다.</li>
@@ -1043,6 +1050,7 @@ export function matchView(me, people, other, result) {
   return `${head}
   ${picker}
   ${periodScore(r)}
+  ${saveRow('saveMatch')}
   <div class="split">
     <section class="col east">${sideLabel('east')}
       <p class="kicker">사주 궁합 · 일간 · 일지 · 띠 · 오행</p>
@@ -1081,7 +1089,7 @@ function calTabs(active) {
 
 const lunarText = (l) => `음력 ${l.leap ? '윤' : ''}${l.month}.${l.day}`;
 
-function pickItem(x, key, fromYear) {
+function pickItem(x, key, fromYear, saved = [], partnerName = '') {
   const off = OFFICERS[x.info.officer];
   const yr = x.year !== fromYear ? `${x.year}년 ` : '';
   const why = x.highlights.slice(0, 3).join(' · ') || '무난한 날';
@@ -1096,10 +1104,11 @@ function pickItem(x, key, fromYear) {
       <ul class="plain treasons"><li><span><b>기본 점수</b></span><em>64</em></li>${x.items.map((i) => `<li class="${i.delta > 0 ? 'up' : i.delta < 0 ? 'down' : ''}"><span><b>${esc(i.label)}</b><small>${esc(i.detail)}</small></span><em>${sign(i.delta)}</em></li>`).join('')}</ul>
     </details>
     <a class="link-btn" href="#/calendar" data-goto="${x.year}-${x.month}-${x.day}">달력에서 보기</a>
+    ${hasDayItem(saved, key, x, partnerName) ? '<button class="link-btn" type="button" disabled>보관함에 저장됨</button>' : `<button class="link-btn" type="button" data-save-day="${x.year}-${x.month}-${x.day}">보관함에 날짜 저장</button>`}
   </li>`;
 }
 
-export function pickResult(profile, st, res) {
+export function pickResult(profile, st, res, saved = []) {
   const P = PURPOSES[st.purpose];
   const from = res.from;
   const head = `<p class="kicker">${from.month}월 ${from.day}일부터 ${res.days}일 동안 ${P.ko}${res.withPartner ? ' · 두 사람 기준' : ''}</p>`;
@@ -1109,15 +1118,15 @@ export function pickResult(profile, st, res) {
   }
   return `${head}
   <h3 class="headline sm">추천하는 날</h3>
-  <ol class="plain pick-list">${res.best.map((x) => pickItem(x, st.purpose, from.year)).join('')}</ol>
-  ${res.more.length ? `<details class="more-read"><summary>다음으로 좋은 날 ${res.more.length}일 더 보기</summary><ol class="plain pick-list" start="6">${res.more.map((x) => pickItem(x, st.purpose, from.year)).join('')}</ol></details>` : ''}
+  <ol class="plain pick-list">${res.best.map((x) => pickItem(x, st.purpose, from.year, saved, res.partnerName)).join('')}</ol>
+  ${res.more.length ? `<details class="more-read"><summary>다음으로 좋은 날 ${res.more.length}일 더 보기</summary><ol class="plain pick-list" start="6">${res.more.map((x) => pickItem(x, st.purpose, from.year, saved, res.partnerName)).join('')}</ol></details>` : ''}
   ${res.avoid.length ? `<details class="more-read"><summary>피하면 좋은 날 ${res.avoid.length}일</summary><ul class="plain avoid-list">${res.avoid.map((x) => `<li><b>${x.year !== from.year ? x.year + '년 ' : ''}${x.month}월 ${x.day}일 ${WEEK[x.info.weekday]}</b><span>${esc(x.flags.join(' · '))}</span></li>`).join('')}</ul></details>` : ''}
   <p class="note">${P.note}</p>
   ${noteProfile}
   <p class="note">건제십이신과 손 없는 날은 옛 택일서의 설명을 바탕으로 하며, 책마다 다르게 적힌 부분이 있어요. 참고로만 봐 주세요.</p>`;
 }
 
-export function pickView(profile, people, st, res) {
+export function pickView(profile, people, st, res, saved = []) {
   const chips = `<div class="chips" role="radiogroup" aria-label="목적">${PURPOSE_KEYS.map((k) =>
     `<label><input type="radio" name="purpose" value="${k}"${st.purpose === k ? ' checked' : ''}><span>${PURPOSES[k].ko}</span></label>`).join('')}</div>`;
   const periods = [30, 90, 180].map((n) => `<label><input type="radio" name="days" value="${n}"${st.days === n ? ' checked' : ''}><span>${n}일</span></label>`).join('');
@@ -1132,5 +1141,114 @@ export function pickView(profile, people, st, res) {
     <fieldset class="field"><legend>찾을 기간 <em>오늘부터</em></legend><div class="seg seg3" role="radiogroup" aria-label="기간">${periods}</div></fieldset>
     ${partner}
   </form>
-  <div class="pick-out" id="pickOut">${pickResult(profile, st, res)}</div>`;
+  <div class="pick-out" id="pickOut">${pickResult(profile, st, res, saved)}</div>`;
+}
+
+/* ───────── 보관함 ───────── */
+function meTabs(active) {
+  return `<nav class="ptabs" aria-label="내 정보">${[['/me', '내 정보'], ['/vault', '보관함']].map(([h, l]) =>
+    `<a href="#${h}"${h === active ? ' aria-current="page"' : ''}>${l}</a>`).join('')}</nav>`;
+}
+
+/** 결과 화면의 저장 버튼 줄 */
+export function saveRow(id, label = '보관함에 저장') {
+  return `<div class="save-row"><button class="btn ghost" type="button" id="${id}">${label}</button><span class="save-note" id="${id}Note" aria-live="polite"></span></div>`;
+}
+
+function trendSvg(hist, sum) {
+  const W = 320, H = 104, L = 8, R = 28, T = 10, B = 94;
+  const x = (i) => L + (i * (W - L - R)) / (hist.length - 1);
+  const y = (v) => B - ((v - 50) / 50) * (B - T);
+  const pts = hist.map((h, i) => `${x(i).toFixed(1)},${y(h.total).toFixed(1)}`).join(' ');
+  const grid = [60, 70, 80, 90].map((v) => `<line class="tr-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tr-lbl" x="${W - R + 6}" y="${y(v) + 4}">${v}</text>`).join('');
+  const dot = (h, cls, r = 3.5) => `<circle class="${cls}" cx="${x(hist.indexOf(h)).toFixed(1)}" cy="${y(h.total).toFixed(1)}" r="${r}"/>`;
+  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="지난 30일 내 점수 흐름">${grid}<polyline class="tr-line" points="${pts}"/>${dot(sum.best, 'tr-hi')}${dot(sum.worst, 'tr-lo')}${dot(hist[hist.length - 1], 'tr-now', 4.5)}</svg>`;
+}
+
+export function vaultList(items, filter, today) {
+  const list = items.filter((x) => filter === 'all' || x.kind === filter);
+  if (!list.length) {
+    return `<p class="note vault-empty">${items.length ? '이 종류로 저장한 것이 아직 없어요.' : '아직 저장한 것이 없어요. 주역 점, 타로, 궁합, 택일 결과에서 "보관함에 저장"을 눌러 보세요.'}</p>`;
+  }
+  return `<ul class="plain vault-list">${list.map((x) => {
+    const k = KINDS[x.kind];
+    const d = new Date(x.created);
+    let extra = '';
+    if (x.kind === 'day') {
+      const n = daysUntil(x.data.year, x.data.month, x.data.day, today);
+      extra = n === 0 ? '오늘' : n > 0 ? `D-${n}` : '지남';
+    }
+    return `<li><a href="#/vault/${x.id}"><span class="vi-mark">${k.mark}</span>
+      <span class="vi-text"><b>${esc(x.title)}</b><small>${k.ko} · ${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}${x.memo ? ` · ${esc(x.memo.slice(0, 24))}` : ''}</small></span>
+      <span class="vi-extra">${extra}</span></a></li>`;
+  }).join('')}</ul>`;
+}
+
+export function vaultView(items, filter, profile, today, visits) {
+  const hist = scoreHistory(profile, today, 30);
+  const sum = summarize(hist);
+  const run = streak(visits, today);
+  const record = profile && sum
+    ? `<p class="kicker">지난 30일 내 점수</p>
+      ${trendSvg(hist, sum)}
+      <p class="note trend-note">초록 점은 가장 높은 날, 주홍 점은 가장 낮은 날, 검은 점은 오늘이에요</p>
+      <dl class="facts">${fact('평균', `${sum.avg}점`)}${fact('가장 높은 날', `${sum.best.month}.${sum.best.day} · ${sum.best.total}점`)}${fact('가장 낮은 날', `${sum.worst.month}.${sum.worst.day} · ${sum.worst.total}점`)}</dl>`
+    : '<p class="note"><a href="#/me">생년월일을 입력</a>하면 지난 30일의 내 점수 흐름을 볼 수 있어요.</p>';
+  const chips = [['all', '전체'], ...KIND_KEYS.map((k) => [k, KINDS[k].ko])].map(([k, l]) =>
+    `<label><input type="radio" name="vaultKind" value="${k}"${filter === k ? ' checked' : ''}><span>${l}</span></label>`).join('');
+  return `<div class="page-head"><h1>보관함 <span class="h1-hanja">藏</span></h1></div>
+  ${meTabs('/vault')}
+  <section class="sec">
+    ${secHead('내 기록')}
+    ${run ? `<p class="vault-streak"><b>${run}</b>일 연속 확인 중 · 이번 달 ${monthVisits(visits, today.year, today.month)}일 방문</p>` : ''}
+    ${record}
+  </section>
+  <section class="sec">
+    ${secHead('저장한 것', `${items.length}`)}
+    <div class="chips" role="radiogroup" aria-label="종류" id="vaultFilter">${chips}</div>
+    <div id="vaultList">${vaultList(items, filter, today)}</div>
+    <p class="note">저장한 내용은 이 기기에만 있어요. 브라우저 데이터를 지우면 함께 사라지고, 최대 200개까지 저장할 수 있어요.</p>
+  </section>`;
+}
+
+export function vaultDetail(item, people, today) {
+  const k = KINDS[item.kind];
+  const d = item.data;
+  let body = '';
+  if (item.kind === 'iching') {
+    body = `<section class="sec">${castResultHtml(readCast(d.values), d.question)}</section>`;
+  } else if (item.kind === 'tarot') {
+    const pos = SPREAD_POSITIONS.three;
+    const picks = d.picks.map((p) => ({ card: MAJOR_ARCANA.find((c) => c.n === p.n), reversed: p.reversed }));
+    body = `<section class="sec"><div class="spread">${picks.map((c, i) => tarotCard(c.card, c.reversed, pos[i])).join('')}</div>
+      ${picks.map((c, i) => `<div class="reading-item"><h3 class="headline sm">${pos[i]}</h3>${tarotReading(c.card, c.reversed)}</div>`).join('')}</section>`;
+  } else if (item.kind === 'match') {
+    const still = d.personId && people.some((p) => p.id === d.personId);
+    body = `<section class="sec">
+      <div class="score-main"><p class="score-num"><b>${d.total}</b><span>점</span></p><div><p class="score-tier">${esc(d.level)}</p><p class="score-advice">${esc(d.text)}</p></div></div>
+      <div class="split">
+        <section class="col east">${sideLabel('east')}<h3 class="headline sm">동양 ${d.east.score}점</h3>${matchReasons(d.east)}</section>
+        <section class="col west">${sideLabel('west')}<h3 class="headline sm">서양 ${d.west.score}점</h3>${matchReasons(d.west)}</section>
+      </div>
+      ${still ? `<a class="more" href="#/match/${d.personId}">지금의 궁합 다시 보기</a>` : '<p class="note">저장한 사람이 지워져 지금의 궁합은 다시 볼 수 없어요.</p>'}
+      <p class="note">저장한 날의 결과예요. 이후에 정보를 고쳐도 이 기록은 바뀌지 않아요. 영향이 큰 항목만 남겨 두었어요.</p>
+    </section>`;
+  } else {
+    const n = daysUntil(d.year, d.month, d.day, today);
+    const off = OFFICERS[d.officer];
+    body = `<section class="sec">
+      <p class="kicker">${PURPOSES[d.purpose].ko} · ${d.partnerName ? `${esc(d.partnerName)}님과 두 사람 기준` : '나 기준'}</p>
+      <p class="score-num"><b>${d.score}</b><span>점</span></p>
+      <p>${n === 0 ? '오늘이에요' : n > 0 ? `D-${n}` : `${-n}일 지났어요`} · 건제 ${off.ko}일(${off.hanja}) — ${off.note}</p>
+      <ul class="plain treasons"><li><span><b>기본 점수</b></span><em>64</em></li>${d.items.map((i) => `<li class="${i.delta > 0 ? 'up' : i.delta < 0 ? 'down' : ''}"><span><b>${esc(i.label)}</b><small>${esc(i.detail)}</small></span><em>${sign(i.delta)}</em></li>`).join('')}</ul>
+      <a class="more" href="#/calendar" data-goto="${d.year}-${d.month}-${d.day}">달력에서 보기</a>
+    </section>`;
+  }
+  return `<div class="page-head"><p class="kicker"><a href="#/vault">보관함</a> · ${k.ko}</p><h1>${esc(item.title)}</h1></div>
+  ${body}
+  <section class="sec vault-memo">
+    <label class="field"><span>메모 <em>이 기기에만 저장돼요</em></span><textarea id="vaultMemo" maxlength="300" rows="3" placeholder="이 결과에 대한 생각이나 나중에 확인할 것">${esc(item.memo || '')}</textarea></label>
+    <p class="save-note" id="memoNote" aria-live="polite"></p>
+    <div class="row"><button class="btn ghost" type="button" id="vaultDelete">삭제</button></div>
+  </section>`;
 }
