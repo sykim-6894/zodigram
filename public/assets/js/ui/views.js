@@ -413,6 +413,23 @@ export function tarotView() {
 export const RELATIONS = ['연인·배우자', '친구', '가족', '동료', '기타'];
 
 /** 내 정보(mode 'me') 또는 저장한 사람 추가·수정(mode 'person') 폼 */
+function backupSection() {
+  return `<section class="sec backup">
+    ${secHead('백업과 복원', '存')}
+    <p class="note">내 정보, 저장한 사람, 보관함, 알림 설정은 이 기기에만 저장돼요. 앱을 지우거나 폰을 바꾸기 전에 백업해 두면 그대로 되살릴 수 있어요. 백업에는 생년월일이 들어 있으니 믿을 수 있는 곳에만 보관하세요.</p>
+    <div class="row">
+      <button class="btn ghost" type="button" id="backupMake">백업 만들기</button>
+      <button class="btn ghost" type="button" id="backupShare">보내기·저장</button>
+    </div>
+    <label class="field"><span>백업 내용 <em>복원할 때는 여기에 붙여 넣으세요</em></span><textarea id="backupText" rows="4" spellcheck="false" autocomplete="off"></textarea></label>
+    <div class="row">
+      <button class="btn ghost" type="button" id="backupRestore">이 내용으로 복원</button>
+      <label class="btn ghost file-btn">파일에서 불러오기<input type="file" id="backupFile" accept=".json,application/json,text/plain" hidden></label>
+    </div>
+    <p class="conv" id="backupMsg" aria-live="polite"></p>
+  </section>`;
+}
+
 function notifySection(n, hasMe) {
   return `<section class="sec notify" id="notifySec" hidden>
     ${secHead('아침 알림', '朝')}
@@ -477,6 +494,7 @@ export function meView(profile, mode = 'me', people = [], notify = { on: false, 
     </div>
   </form>
   ${isPerson ? '' : notifySection(notify, !!profile)}
+  ${isPerson ? '' : backupSection()}
   ${isPerson ? '' : peopleSection(people, !!profile)}`;
 }
 
@@ -890,7 +908,8 @@ export function periodView(kind, profile, r) {
   <p class="period-title">${r.title}</p>
   ${periodScore(r)}
   ${kind === 'quarter' ? '' : topicGrid(getTopics(profile, kind), kind)}
-  ${cols}`;
+  ${cols}
+  ${kind === 'year' ? '<p class="note"><a href="#/newyear">신년운세 — 월별 흐름과 주제별 한 해 보기</a></p>' : ''}`;
 }
 
 /* ───────── 동양 점성술: 자미두수 명반 ───────── */
@@ -1262,4 +1281,35 @@ export function vaultDetail(item, people, today) {
     <p class="save-note" id="memoNote" aria-live="polite"></p>
     <div class="row"><button class="btn ghost" type="button" id="vaultDelete">삭제</button></div>
   </section>`;
+}
+
+/* ───────── 신년운세 ───────── */
+export function newYearView(profile, r, year) {
+  const today = getToday();
+  if (!profile) return `${dateline(today)}${periodTabs('/year')}${needProfile('east')}`;
+  const y = r.yr;
+  const names = (list) => list.map((x) => `${x.month}월`).join(' · ');
+  const maxV = Math.max(...r.months.map((m) => m.total));
+  const nav = `<p class="note">${year > 1901 ? `<a href="#/newyear/${year - 1}">${year - 1}년</a> · ` : ''}<a href="#/newyear/${year + 1}">${year + 1}년</a> 신년운세도 볼 수 있어요.</p>`;
+  return `${dateline(today)}
+  ${periodTabs('/year')}
+  <div class="page-head"><p class="kicker">신년운세</p><h1>${year}년 한 해의 흐름</h1></div>
+  ${periodScore(y)}
+  <section class="sec">
+    ${secHead(`${year}년의 키워드`, '鍵')}
+    <ul class="plain readings">${r.keywords.map((k) => `<li>${esc(k)}</li>`).join('')}</ul>
+    <p class="lede">${esc(y.eastView.text)}</p>
+  </section>
+  <section class="sec">
+    ${secHead('월별 흐름', '月')}
+    <ol class="plain ny-months">${r.months.map((m) => `<li class="${m.tone}"><span>${m.month}월</span><span class="ss-bar"><i style="width:${Math.round((m.total / maxV) * 100)}%"></i></span><b>${m.total}</b></li>`).join('')}</ol>
+    <p><b>힘이 실리는 달</b> ${names(r.best)}</p>
+    <p><b>천천히 가면 좋은 달</b> ${names(r.careful)}</p>
+    <p class="note">월별 점수는 그 달의 월운(동양·서양 평균)입니다. 점수가 낮은 달은 쉬어 가며 정리하는 달로 보세요.</p>
+  </section>
+  <section class="sec">
+    ${secHead('주제별 한 해', '題')}
+    <ul class="plain readings">${r.topics.map((t) => `<li><b>${esc(t.ko)} ${t.total}점</b>${esc(t.head)}</li>`).join('')}</ul>
+  </section>
+  ${nav}`;
 }

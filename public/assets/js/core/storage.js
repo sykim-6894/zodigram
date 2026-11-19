@@ -115,6 +115,9 @@ export function loadVisits() {
 /* 아침 알림 설정 */
 const NOTIFY_KEY = 'zodigram.notify.v1';
 
+/** 백업·복원이 다루는 저장 항목(이름 → 저장 키) */
+export const STORAGE_KEYS = { profile: KEY, people: PEOPLE_KEY, vault: VAULT_KEY, visits: VISIT_KEY, notify: NOTIFY_KEY };
+
 export function loadNotify() {
   try { return normalizeNotify(JSON.parse(localStorage.getItem(NOTIFY_KEY) || 'null')); }
   catch { return normalizeNotify(null); }

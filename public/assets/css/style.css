@@ -758,3 +758,12 @@ fieldset.field legend em { font-style: normal; color: var(--ink-3); margin-left:
 .vault-empty { margin: 16px 0 0; }
 #vaultFilter { margin-bottom: 8px; }
 .vault-memo .field { max-width: 560px; }
+
+/* 신년운세 월별 흐름 */
+.ny-months { margin: 0 0 20px; padding: 0; list-style: none; display: grid; gap: 8px; }
+.ny-months li { display: grid; grid-template-columns: 36px 1fr 32px; align-items: center; gap: 12px; font-size: 14px; }
+.ny-months .ss-bar { height: 6px; background: var(--rule); display: block; }
+.ny-months .ss-bar i { display: block; height: 100%; background: var(--ink); }
+.ny-months li.c .ss-bar i { background: var(--ink-3); }
+.ny-months b { text-align: right; font-variant-numeric: tabular-nums; }
+.file-btn { cursor: pointer; }

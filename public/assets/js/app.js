@@ -4,7 +4,8 @@ import { notifySupported, requestNotifyPermission, applyNotifications } from './
 import { parseTime } from './core/notify.js';
 import { ichingItem, tarotItem, matchItem, dayItem } from './core/vault.js';
 import { computeMatch } from './core/match.js';
-import { isNative } from './core/env.js';
+import { isNative, shareData, isShareCancel } from './core/env.js';
+import { createBackup, parseBackup, restoreBackup, backupFileName } from './core/backup.js';
 import { tossLine, readCast } from './core/iching.js';
 import { trueRandom, shuffle } from './core/seed.js';
 import { lunarToSolar, solarToLunar, formatLunar, LUNAR_MIN_YEAR, LUNAR_MAX_YEAR } from './core/lunar.js';
@@ -13,6 +14,7 @@ import { hexagramSvg, coinSvg } from './ui/glyphs.js';
 import { getToday } from './core/fortune.js';
 import { manseLookup } from './core/manse.js';
 import { getYear, getMonth, getQuarter } from './core/period.js';
+import { getNewYear, clampYear } from './core/newyear.js';
 import { getTopics } from './core/topics.js';
 import { findDays } from './core/pick.js';
 import { prepareCard, shareCard, shareLink, downloadCard, uploadCard, shareCardLink, copyLink, prepareMatchCard } from './ui/share.js';
@@ -111,6 +113,12 @@ const binders = {
   '/': bindShare,
 };
 
+routes['/newyear'] = () => {
+  const p = loadProfile();
+  const year = clampYear(routeParam);
+  return V.newYearView(p, p ? getNewYear(p, year) : null, year);
+};
+
 function periodPage(kind) {
   const p = loadProfile();
   const r = p ? { year: getYear, month: getMonth, quarter: getQuarter }[kind](p) : null;
@@ -127,7 +135,7 @@ for (const t of ['love', 'money', 'work', 'health']) {
   }
 }
 
-const HOME_PATHS = ['/', '/month', '/quarter', '/year', ...Object.keys(routes).filter((r) => r.startsWith('/topic/'))];
+const HOME_PATHS = ['/', '/month', '/quarter', '/year', '/newyear', ...Object.keys(routes).filter((r) => r.startsWith('/topic/'))];
 
 // 주소 안의 값(#/person/<id>, #/match/<id>)
 let routeParam = null;
@@ -138,6 +146,8 @@ function currentPath() {
   if (routes[h]) return h;
   let m = h.match(/^\/person\/(new|[a-z0-9]+)$/);
   if (m) { routeParam = m[1]; return '/person'; }
+  m = h.match(/^\/newyear\/(\d{4})$/);
+  if (m) { routeParam = m[1]; return '/newyear'; }
   m = h.match(/^\/match(?:\/([a-z0-9]+))?$/);
   if (m) { routeParam = m[1] || null; return '/match'; }
   m = h.match(/^\/vault(?:\/(v[a-z0-9]+))?$/);
@@ -461,7 +471,62 @@ function bindProfileForm(mode = 'me') {
     applyNotifications();
     render();
   });
-  if (mode === 'me') bindNotify();
+  if (mode === 'me') { bindNotify(); bindBackup(); }
+}
+
+/* 백업과 복원 */
+function bindBackup() {
+  const text = document.getElementById('backupText');
+  const msg = document.getElementById('backupMsg');
+  if (!text) return;
+  const say = (t, err = false) => { msg.classList.toggle('err', err); msg.textContent = t; };
+  const make = () => { text.value = createBackup(); return text.value; };
+  document.getElementById('backupMake').addEventListener('click', async () => {
+    const code = make();
+    try { await navigator.clipboard.writeText(code); say('백업 내용을 만들어 복사했어요. 메모나 메일에 붙여 넣어 보관하세요.'); }
+    catch { text.select(); say('백업 내용을 만들었어요. 위 칸의 글을 모두 복사해 보관하세요.'); }
+  });
+  document.getElementById('backupShare').addEventListener('click', async () => {
+    const code = make();
+    try {
+      if (isNative() || !('download' in document.createElement('a'))) {
+        const p = shareData({ title: 'Zodigram 백업', text: code });
+        if (!p) throw new Error('no share');
+        await p;
+        say('보내기 창을 열었어요. 나에게 보내기·메모·드라이브 등에 저장하세요.');
+      } else {
+        const url = URL.createObjectURL(new Blob([code], { type: 'application/json' }));
+        const a = Object.assign(document.createElement('a'), { href: url, download: backupFileName() });
+        document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        say('백업 파일을 내려받았어요.');
+      }
+    } catch (e) {
+      if (!isShareCancel(e)) say('보내지 못했어요. 위 칸의 글을 직접 복사해 보관하세요.', true);
+    }
+  });
+  const restore = () => {
+    const r = parseBackup(text.value);
+    if (!r.ok) {
+      say({ format: '백업 내용이 아니에요. 백업으로 만든 글을 전부 붙여 넣었는지 확인해 주세요.', version: '더 새로운 버전의 백업이라 읽을 수 없어요. 앱을 업데이트해 주세요.', empty: '복원할 내용이 없어요.' }[r.reason] || '복원하지 못했어요.', true);
+      return;
+    }
+    const c = r.counts;
+    if (!confirm(`이 기기의 내용을 백업으로 바꿉니다.
+내 정보 ${c.profile}개 · 저장한 사람 ${c.people}명 · 보관함 ${c.vault}개
+계속할까요?`)) return;
+    const done = restoreBackup(text.value);
+    if (!done.ok) { say('저장 공간 문제로 복원하지 못했어요.', true); return; }
+    applyNotifications();
+    render();
+  };
+  document.getElementById('backupRestore').addEventListener('click', restore);
+  document.getElementById('backupFile').addEventListener('change', async (ev) => {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    if (f.size > 5e6) { say('파일이 너무 커요.', true); return; }
+    text.value = await f.text();
+    restore();
+  });
 }
 
 /* 아침 알림 설정(앱에서만 보인다) */

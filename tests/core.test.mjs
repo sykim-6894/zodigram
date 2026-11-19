@@ -600,3 +600,46 @@ test('아침 알림: 설정 정리와 예약 목록', async () => {
   // 날마다 한마디가 겹치지 않는다
   assert.equal(new Set(early.map((n) => n.body)).size, early.length);
 });
+
+test('백업·복원: 내보내고 되가져오며 잘못된 내용은 거부한다', async () => {
+  const { createBackup, parseBackup, restoreBackup } = await import('../public/assets/js/core/backup.js');
+  const mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), m }; };
+  const a = mem();
+  a.setItem('zodigram.profile.v1', JSON.stringify({ year: 1990, month: 5, day: 15, name: '나' }));
+  a.setItem('zodigram.people.v1', JSON.stringify([{ id: 'p1', name: '친구', year: 1992, month: 1, day: 2 }]));
+  a.setItem('zodigram.vault.v1', JSON.stringify([{ id: 'v1' }, { id: 'v2' }]));
+  a.setItem('zodigram.visits.v1', 'not json'); // 망가진 항목은 건너뛴다
+  const code = createBackup(a, new Date('2026-11-19T00:00:00Z'));
+  const parsed = parseBackup(code);
+  assert.ok(parsed.ok);
+  assert.deepEqual(parsed.counts, { profile: 1, people: 1, vault: 2 });
+  assert.equal(parsed.data.visits, undefined);
+  const b = mem();
+  assert.ok(restoreBackup(code, b).ok);
+  assert.deepEqual(JSON.parse(b.getItem('zodigram.vault.v1')), [{ id: 'v1' }, { id: 'v2' }]);
+  assert.equal(b.getItem('zodigram.visits.v1'), null);
+  for (const bad of ['', 'abc', '{}', JSON.stringify({ app: 'other', version: 1, data: {} }), JSON.stringify({ app: 'zodigram', version: 9, data: { vault: [] } }), JSON.stringify({ app: 'zodigram', version: 1, data: { vault: 'x' } })]) {
+    assert.equal(parseBackup(bad).ok, false, bad);
+  }
+  assert.equal(parseBackup(JSON.stringify({ app: 'zodigram', version: 9, data: { vault: [] } })).reason, 'version');
+});
+
+test('신년운세: 월별 12개, 좋은 달·조심할 달, 주제', async () => {
+  const { getNewYear, defaultNewYear, clampYear } = await import('../public/assets/js/core/newyear.js');
+  assert.equal(defaultNewYear(new Date('2026-11-19T03:00:00Z')), 2027);
+  assert.equal(defaultNewYear(new Date('2026-03-01T03:00:00Z')), 2026);
+  assert.equal(clampYear('2030'), 2030);
+  assert.equal(clampYear('abc', new Date('2026-03-01T03:00:00Z')), 2026);
+  const r = getNewYear({ year: 1990, month: 5, day: 15, hour: 10, minute: 30, place: '서울', gender: 'f' }, 2027);
+  assert.equal(r.year, 2027);
+  assert.equal(r.months.length, 12);
+  assert.ok(r.months.every((m) => m.total >= 50 && m.total <= 100));
+  assert.equal(r.best.length, 3);
+  assert.equal(r.careful.length, 2);
+  const min = Math.min(...r.months.map((m) => m.total)), max = Math.max(...r.months.map((m) => m.total));
+  assert.ok(r.best.some((m) => m.total === max));
+  assert.ok(r.careful.some((m) => m.total === min));
+  assert.equal(r.topics.length, 4);
+  assert.ok(r.keywords.length >= 2 && r.keywords.every((k) => k && !k.includes('undefined')));
+  assert.ok(r.yr.total >= 50 && r.yr.total <= 100);
+});
