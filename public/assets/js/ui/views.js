@@ -19,6 +19,8 @@ import { TOPIC_KEYS, TOPICS as TOPICS_INFO } from '../data/topic-text.js';
 import { STARS as ZW_STARS, PALACES as ZW_PALACES, SIHUA_TEXT as ZW_SIHUA } from '../data/ziwei-text.js';
 import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
 import { glyph, roman, hexagramSvg } from './glyphs.js';
+import { getLucky } from '../core/lucky.js';
+import { collection, drawStreak } from '../core/draw.js';
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -142,6 +144,8 @@ export function homeView(profile) {
     ${secHead('오늘의 한마디')}
     <div class="quotes">${quoteBlock(dayQuotes[0], 'east')}${quoteBlock(dayQuotes[1], 'west')}</div>
   </section>
+
+  ${luckySection(profile)}
 
   <section class="sec">
     ${secHead('오늘의 괘', '今日之卦')}
@@ -274,6 +278,7 @@ export function ichingView() {
   <section class="sec">
     <p>묻고 싶은 일을 한 문장으로 떠올린 뒤 동전을 여섯 번 던지세요. 아래 효부터 위로 쌓입니다.</p>
     <label class="field"><span>질문 (보관함에 저장할 때만 기록돼요)</span><input id="q" type="text" maxlength="80" placeholder="예) 이번 이직을 진행해도 될까?"></label>
+    <div class="chips" id="qChips" aria-label="질문 예시">${['이직·진로', '연애·관계', '재물·투자', '건강', '오늘의 선택'].map((t, i) => `<button type="button" class="chip" data-q="${['이번 이직을 진행해도 될까?', '이 사람과의 관계는 어떻게 흘러갈까?', '지금 이 지출·투자를 해도 될까?', '요즘 몸과 마음을 어떻게 돌보면 좋을까?', '오늘 앞에 놓인 선택, 어느 쪽이 좋을까?'][i]}">${t}</button>`).join('')}</div>
     <div class="cast">
       <div class="cast-lines" id="castLines"></div>
       <div class="cast-side">
@@ -1280,6 +1285,50 @@ export function vaultDetail(item, people, today) {
     <label class="field"><span>메모 <em>이 기기에만 저장돼요</em></span><textarea id="vaultMemo" maxlength="300" rows="3" placeholder="이 결과에 대한 생각이나 나중에 확인할 것">${esc(item.memo || '')}</textarea></label>
     <p class="save-note" id="memoNote" aria-live="polite"></p>
     <div class="row"><button class="btn ghost" type="button" id="vaultDelete">삭제</button></div>
+  </section>`;
+}
+
+/* ───────── 오늘의 행운 · 한 장 뽑기 · 질문 ───────── */
+function luckySection(profile) {
+  const l = getLucky(profile);
+  return `<section class="sec lucky">
+    ${secHead('오늘의 행운', '幸')}
+    <dl class="lucky-list">
+      <div><dt>색</dt><dd><i class="swatch" style="background:${l.color.hex}"></i>${l.color.name}</dd></div>
+      <div><dt>숫자</dt><dd>${l.numbers.join(' · ')}</dd></div>
+      <div><dt>방향</dt><dd>${l.direction}</dd></div>
+      <div><dt>좋은 시간</dt><dd>${l.time.name}<small>${l.time.range}</small></dd></div>
+      <div><dt>음식</dt><dd>${l.food}</dd></div>
+    </dl>
+    <p class="note">재미로 보는 가벼운 항목이에요. 오늘의 점수에는 반영되지 않습니다.</p>
+    <div class="row">
+      <a class="btn ghost" href="#/draw">오늘의 한 장 뽑기</a>
+      <a class="btn ghost" href="#/east/iching">오늘의 질문 · 주역</a>
+    </div>
+  </section>`;
+}
+
+export function drawView(todayDraw, draws, todayKey) {
+  const col = collection(draws);
+  const streak = drawStreak(draws, todayKey);
+  const card = todayDraw ? MAJOR_ARCANA[todayDraw.n] : null;
+  return `${dateline(getToday())}
+  <div class="page-head west">${sideLabel('west')}<h1>오늘의 한 장</h1></div>
+  <section class="sec">
+    ${card
+      ? `<p>오늘은 이 카드를 뽑았어요. 내일 새 카드를 뽑을 수 있습니다.</p>
+         <div class="spread single" id="drawn">${tarotCard(card, todayDraw.reversed, '오늘')}</div>
+         <div class="reading-item">${tarotReading(card, todayDraw.reversed)}</div>`
+      : `<p>마음을 가라앉히고 끌리는 카드 한 장을 고르세요. 하루에 한 장만 뽑을 수 있어요.</p>
+         <div class="spread single" id="drawn"></div>
+         <div class="deck" id="drawDeck"></div>
+         <div class="reading-item" id="drawReading"></div>`}
+    <p class="note" id="drawStats">${streak ? `${streak}일 연속으로 뽑았어요 · ` : ''}도감 ${col.owned} / ${col.size}장</p>
+  </section>
+  <section class="sec">
+    ${secHead('카드 도감', '圖')}
+    <ul class="plain dex">${MAJOR_ARCANA.map((c, i) => `<li class="${col.counts[i] ? 'got' : ''}"><span class="dex-n">${roman(c.n)}</span><span class="dex-name">${col.counts[i] ? c.ko : '?'}</span>${col.counts[i] > 1 ? `<small>×${col.counts[i]}</small>` : ''}</li>`).join('')}</ul>
+    <p class="note">뽑은 카드가 하나씩 채워져요. 22장을 모두 모아 보세요.</p>
   </section>`;
 }
 

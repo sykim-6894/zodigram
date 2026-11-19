@@ -15,6 +15,7 @@ import { getToday } from './core/fortune.js';
 import { manseLookup } from './core/manse.js';
 import { getYear, getMonth, getQuarter } from './core/period.js';
 import { getNewYear, clampYear } from './core/newyear.js';
+import { loadDraws, saveDraw } from './core/storage.js';
 import { getTopics } from './core/topics.js';
 import { findDays } from './core/pick.js';
 import { prepareCard, shareCard, shareLink, downloadCard, uploadCard, shareCardLink, copyLink, prepareMatchCard } from './ui/share.js';
@@ -102,6 +103,7 @@ const routes = {
 const binders = {
   '/me': () => bindProfileForm('me'),
   '/person': () => bindProfileForm('person'),
+  '/draw': bindDraw,
   '/match': bindMatch,
   '/east/iching': bindIching,
   '/west/tarot': bindTarot,
@@ -111,6 +113,12 @@ const binders = {
   '/vault/item': bindVaultItem,
   '/manse': bindManse,
   '/': bindShare,
+};
+
+routes['/draw'] = () => {
+  const draws = loadDraws();
+  const key = getToday().key;
+  return V.drawView(draws[key] || null, draws, key);
 };
 
 routes['/newyear'] = () => {
@@ -592,7 +600,27 @@ function bindIching() {
       result.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   });
+  document.getElementById('qChips')?.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-q]');
+    if (b) { const q = document.getElementById('q'); q.value = b.dataset.q; q.focus(); }
+  });
   reset.addEventListener('click', render);
+}
+
+/* 오늘의 한 장 뽑기 */
+function bindDraw() {
+  const deckEl = document.getElementById('drawDeck');
+  if (!deckEl) return;
+  const key = getToday().key;
+  const deck = shuffle(MAJOR_ARCANA, trueRandom).map((card) => ({ card, reversed: trueRandom() < 0.3 }));
+  deckEl.innerHTML = deck.map((_, i) => `<button class="tback" data-i="${i}" aria-label="카드 ${i + 1}"></button>`).join('');
+  deckEl.addEventListener('click', (ev) => {
+    const b = ev.target.closest('.tback');
+    if (!b) return;
+    const pick = deck[Number(b.dataset.i)];
+    saveDraw(key, { n: pick.card.n, reversed: pick.reversed });
+    render();
+  });
 }
 
 /* 타로 세 장 */

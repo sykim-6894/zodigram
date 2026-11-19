@@ -114,9 +114,10 @@ export function loadVisits() {
 
 /* 아침 알림 설정 */
 const NOTIFY_KEY = 'zodigram.notify.v1';
+const DRAW_KEY = 'zodigram.draws.v1';
 
 /** 백업·복원이 다루는 저장 항목(이름 → 저장 키) */
-export const STORAGE_KEYS = { profile: KEY, people: PEOPLE_KEY, vault: VAULT_KEY, visits: VISIT_KEY, notify: NOTIFY_KEY };
+export const STORAGE_KEYS = { profile: KEY, people: PEOPLE_KEY, vault: VAULT_KEY, visits: VISIT_KEY, notify: NOTIFY_KEY, draws: DRAW_KEY };
 
 export function loadNotify() {
   try { return normalizeNotify(JSON.parse(localStorage.getItem(NOTIFY_KEY) || 'null')); }
@@ -127,4 +128,23 @@ export function saveNotify(s) {
   const v = normalizeNotify(s);
   try { localStorage.setItem(NOTIFY_KEY, JSON.stringify(v)); } catch { /* 저장 불가 */ }
   return v;
+}
+
+/* 오늘의 한 장 뽑기 기록: { 'YYYY-MM-DD': { n: 카드 번호, reversed: 역방향 여부 } } */
+export function loadDraws() {
+  try {
+    const o = JSON.parse(localStorage.getItem(DRAW_KEY) || '{}');
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
+  } catch { return {}; }
+}
+
+/** 그날 이미 뽑은 카드가 있으면 그대로 두고, 없으면 기록한다. 최근 400일만 남긴다. */
+export function saveDraw(dateKey, draw) {
+  const all = loadDraws();
+  if (all[dateKey]) return all[dateKey];
+  all[dateKey] = { n: draw.n, reversed: !!draw.reversed };
+  const keep = Object.keys(all).sort().slice(-400);
+  const out = Object.fromEntries(keep.map((k) => [k, all[k]]));
+  try { localStorage.setItem(DRAW_KEY, JSON.stringify(out)); } catch { /* 저장 불가 */ }
+  return all[dateKey];
 }

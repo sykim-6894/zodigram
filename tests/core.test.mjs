@@ -643,3 +643,38 @@ test('신년운세: 월별 12개, 좋은 달·조심할 달, 주제', async () =
   assert.ok(r.keywords.length >= 2 && r.keywords.every((k) => k && !k.includes('undefined')));
   assert.ok(r.yr.total >= 50 && r.yr.total <= 100);
 });
+
+test('오늘의 행운: 같은 날·같은 사람은 같고 값이 올바르다', async () => {
+  const { getLucky } = await import('../public/assets/js/core/lucky.js');
+  const p = { year: 1990, month: 5, day: 15 };
+  const t = new Date('2026-11-19T03:00:00Z');
+  const a = getLucky(p, t), b = getLucky(p, t);
+  assert.deepEqual(a, b);
+  assert.ok(a.numbers.length === 2 && a.numbers[0] < a.numbers[1] && a.numbers.every((n) => n >= 1 && n <= 45));
+  assert.match(a.color.hex, /^#[0-9A-F]{6}$/i);
+  assert.ok(a.direction && a.time.name && a.food);
+  const days = new Set();
+  for (let i = 0; i < 20; i++) days.add(JSON.stringify(getLucky(p, new Date(t.getTime() + i * 86400000))));
+  assert.ok(days.size >= 15, '날마다 달라야 한다');
+  assert.ok(getLucky(null, t).color.name); // 생년월일이 없어도 동작
+});
+
+test('한 장 뽑기: 도감 집계와 연속 일수, 하루 한 장 저장', async () => {
+  const { collection, drawStreak } = await import('../public/assets/js/core/draw.js');
+  const draws = { '2026-11-17': { n: 3 }, '2026-11-18': { n: 3 }, '2026-11-19': { n: 21 }, '2026-11-01': { n: 99 } };
+  const c = collection(draws);
+  assert.equal(c.size, 22);
+  assert.equal(c.owned, 2);
+  assert.equal(c.counts[3], 2);
+  assert.equal(c.total, 3); // 범위 밖 번호는 세지 않는다
+  assert.equal(drawStreak(draws, '2026-11-19'), 3);
+  assert.equal(drawStreak(draws, '2026-11-20'), 3); // 오늘 아직 안 뽑았으면 어제까지
+  assert.equal(drawStreak({}, '2026-11-19'), 0);
+  const store = new Map();
+  globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) };
+  const { saveDraw, loadDraws } = await import('../public/assets/js/core/storage.js');
+  saveDraw('2026-11-19', { n: 5, reversed: true });
+  const again = saveDraw('2026-11-19', { n: 9, reversed: false });
+  assert.deepEqual(again, { n: 5, reversed: true }); // 같은 날 다시 뽑아도 바뀌지 않는다
+  assert.deepEqual(loadDraws()['2026-11-19'], { n: 5, reversed: true });
+});

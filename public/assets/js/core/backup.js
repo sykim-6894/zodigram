@@ -11,6 +11,7 @@ const SHAPES = {
   vault: Array.isArray,
   visits: Array.isArray,
   notify: (v) => v && typeof v === 'object' && !Array.isArray(v),
+  draws: (v) => v && typeof v === 'object' && !Array.isArray(v),
 };
 
 function readJson(storage, key) {

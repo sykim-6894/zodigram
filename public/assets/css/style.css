@@ -767,3 +767,19 @@ fieldset.field legend em { font-style: normal; color: var(--ink-3); margin-left:
 .ny-months li.c .ss-bar i { background: var(--ink-3); }
 .ny-months b { text-align: right; font-variant-numeric: tabular-nums; }
 .file-btn { cursor: pointer; }
+
+/* 오늘의 행운 · 한 장 뽑기 · 질문 칩 */
+.lucky-list { display: grid; gap: 0; margin: 0 0 12px; }
+.lucky-list > div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.lucky-list dt { color: var(--ink-3); font-size: 14px; }
+.lucky-list dd { margin: 0; text-align: right; }
+.lucky-list dd small { display: block; color: var(--ink-3); font-size: 12px; }
+.swatch { display: inline-block; width: 14px; height: 14px; margin-right: 8px; border: 1px solid var(--rule); vertical-align: -2px; }
+.spread.single { justify-content: center; }
+.dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
+.dex li { border: 1px solid var(--rule); padding: 10px 8px; text-align: center; font-size: 13px; color: var(--ink-3); display: grid; gap: 4px; }
+.dex li.got { color: var(--ink); border-color: var(--ink-3); }
+.dex-n { font: 400 11px/1 var(--serif); color: var(--ink-3); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 16px; }
+.chip { font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--rule); background: transparent; color: var(--ink-2, var(--ink)); cursor: pointer; }
+.chip:hover { border-color: var(--ink); }
