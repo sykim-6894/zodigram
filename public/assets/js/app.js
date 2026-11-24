@@ -15,6 +15,8 @@ import { getToday } from './core/fortune.js';
 import { manseLookup } from './core/manse.js';
 import { getYear, getMonth, getQuarter } from './core/period.js';
 import { getNewYear, clampYear } from './core/newyear.js';
+import { getWeek } from './core/week.js';
+import { badgeStats } from './core/badges.js';
 import { loadDraws, saveDraw } from './core/storage.js';
 import { getTopics } from './core/topics.js';
 import { findDays } from './core/pick.js';
@@ -82,6 +84,8 @@ let manse = nowManse();
 
 const routes = {
   '/': () => V.homeView(loadProfile()),
+  '/week': () => { const p = loadProfile(); return V.weekView(p, p ? getWeek(p) : null); },
+  '/duo': () => V.duoView(loadProfile()),
   '/month': () => periodPage('month'),
   '/quarter': () => periodPage('quarter'),
   '/year': () => periodPage('year'),
@@ -91,7 +95,7 @@ const routes = {
   '/west/tarot': () => V.tarotView(),
   '/calendar': () => V.calendarView(loadProfile(), cal, cal.sel),
   '/pick': () => V.pickView(loadProfile(), loadPeople(), pick, pickRes(), loadVault()),
-  '/vault': () => V.vaultView(loadVault(), vaultFilter, loadProfile(), getToday().date, loadVisits()),
+  '/vault': () => V.vaultView(loadVault(), vaultFilter, loadProfile(), getToday().date, loadVisits(), badgeStats({ visits: loadVisits(), draws: loadDraws(), vault: loadVault(), people: loadPeople() })),
   '/vault/item': () => vaultItemPage(),
   '/manse': () => V.manseView(manse),
   '/me': () => V.meView(loadProfile(), 'me', loadPeople(), loadNotify()),
@@ -104,6 +108,7 @@ const binders = {
   '/me': () => bindProfileForm('me'),
   '/person': () => bindProfileForm('person'),
   '/draw': bindDraw,
+  '/duo': bindDuo,
   '/match': bindMatch,
   '/east/iching': bindIching,
   '/west/tarot': bindTarot,
@@ -143,7 +148,7 @@ for (const t of ['love', 'money', 'work', 'health']) {
   }
 }
 
-const HOME_PATHS = ['/', '/month', '/quarter', '/year', '/newyear', ...Object.keys(routes).filter((r) => r.startsWith('/topic/'))];
+const HOME_PATHS = ['/', '/week', '/month', '/quarter', '/year', '/newyear', ...Object.keys(routes).filter((r) => r.startsWith('/topic/'))];
 
 // 주소 안의 값(#/person/<id>, #/match/<id>)
 let routeParam = null;
@@ -180,6 +185,32 @@ function bindMatch() {
   const other = (routeParam && getPerson(routeParam)) || people[0];
   bindSave('saveMatch', () => matchItem(me, other, computeMatch(me, other)));
   bindCardShare(() => prepareMatchCard(me, other, computeMatch(me, other)));
+}
+
+/* 두 사람 비교: 입력값으로 임시 프로필을 만들어 궁합만 계산하고 아무것도 저장하지 않는다 */
+function bindDuo() {
+  const form = document.getElementById('duoForm');
+  const err = document.getElementById('duoErr');
+  const out = document.getElementById('duoResult');
+  const read = (n) => {
+    const el = form.elements;
+    const [y, m, d] = el[`date${n}`].value.split('-').map(Number);
+    if (!y || !m || !d) return { error: `${n === 1 ? '첫' : '두'} 번째 사람의 생년월일을 입력해 주세요.` };
+    if (y < LUNAR_MIN_YEAR || y > LUNAR_MAX_YEAR) return { error: '1900~2100년 사이로 입력해 주세요.' };
+    let hour = null, minute = null;
+    if (el[`time${n}`].value) [hour, minute] = el[`time${n}`].value.split(':').map(Number);
+    return { p: { name: el[`name${n}`].value.trim(), calendar: 'solar', lunar: null, year: y, month: m, day: d, hour, minute, place: '서울', gender: '' } };
+  };
+  form.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const a = read(1), b = read(2);
+    const bad = a.error || b.error;
+    err.classList.toggle('err', !!bad);
+    err.textContent = bad || '';
+    if (bad) { out.innerHTML = ''; return; }
+    out.innerHTML = V.duoResult(a.p, b.p, computeMatch(a.p, b.p));
+    document.getElementById('duoOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 }
 
 function render() {

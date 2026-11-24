@@ -678,3 +678,31 @@ test('한 장 뽑기: 도감 집계와 연속 일수, 하루 한 장 저장', as
   assert.deepEqual(again, { n: 5, reversed: true }); // 같은 날 다시 뽑아도 바뀌지 않는다
   assert.deepEqual(loadDraws()['2026-11-19'], { n: 5, reversed: true });
 });
+
+test('출석 배지: 연속 일수와 배지 달성', async () => {
+  const { longestRun, badgeStats, badgeList } = await import('../public/assets/js/core/badges.js');
+  assert.equal(longestRun(['2026-11-01', '2026-11-02', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-06']), 3);
+  assert.equal(longestRun(['2026-02-28', '2026-03-01']), 2); // 달이 바뀌어도 이어진다
+  assert.equal(longestRun([]), 0);
+  const none = badgeList(badgeStats());
+  assert.equal(none.filter((b) => b.got).length, 0);
+  const keys = Array.from({ length: 7 }, (_, i) => `2026-11-${String(i + 1).padStart(2, '0')}`);
+  const draws = Object.fromEntries(keys.map((k, i) => [k, { n: i, reversed: false }]));
+  const got = badgeList(badgeStats({ visits: keys, draws, vault: [{ kind: 'match' }], people: [{}] })).filter((b) => b.got).map((b) => b.id);
+  for (const id of ['first', 'run3', 'run7', 'draw1', 'drawRun7', 'save1', 'people1', 'match1']) assert.ok(got.includes(id), id);
+  assert.ok(!got.includes('run30') && !got.includes('dex11'));
+});
+
+test('이번 주 흐름: 7일 점수가 홈의 오늘 점수와 같다', async () => {
+  const { getWeek } = await import('../public/assets/js/core/week.js');
+  const p = { year: 1990, month: 5, day: 12, hour: null, minute: null, place: '서울' };
+  const now = new Date(2026, 10, 24, 10);
+  const w = getWeek(p, now);
+  assert.equal(w.days.length, 7);
+  assert.equal(w.days[0].total, getScore(p, now).score.total);
+  assert.ok(w.days[0].today && !w.days[1].today);
+  assert.deepEqual(w.days.map((d) => d.key), ['2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28', '2026-11-29', '2026-11-30']);
+  assert.ok(w.days.every((d) => d.total >= 50 && d.total <= 100));
+  assert.equal(w.best.total, Math.max(...w.days.map((d) => d.total)));
+  assert.equal(w.worst.total, Math.min(...w.days.map((d) => d.total)));
+});

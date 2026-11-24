@@ -21,6 +21,7 @@ import { FLOW_LABEL, TEN_GOD_DAY } from '../data/saju-text.js';
 import { glyph, roman, hexagramSvg } from './glyphs.js';
 import { getLucky } from '../core/lucky.js';
 import { collection, drawStreak } from '../core/draw.js';
+import { badgeList } from '../core/badges.js';
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -512,6 +513,7 @@ function peopleSection(people, hasMe) {
       <span class="pl-name"><b>${esc(x.name)}</b><small>${esc(x.relation || '')} · ${x.year}.${x.month}.${x.day}${x.calendar === 'lunar' ? ' (음력 입력)' : ''}</small></span>
       <span class="pl-act">${hasMe ? `<a href="#/match/${x.id}">궁합</a>` : ''}<a href="#/person/${x.id}">수정</a></span></li>`).join('')}</ul>` : ''}
     <a class="btn ghost" href="#/person/new">사람 추가</a>
+    <a class="btn ghost" href="#/duo">저장 없이 두 사람 비교</a>
   </section>`;
 }
 
@@ -817,7 +819,7 @@ function monthPillarLine(y, m) {
 }
 
 /* ───────── 기간 탭: 오늘 · 이달 · 이번 분기 · 올해 ───────── */
-const PERIOD_TABS = [['/', '오늘'], ['/month', '이달'], ['/quarter', '이번 분기'], ['/year', '올해']];
+const PERIOD_TABS = [['/', '오늘'], ['/week', '이번 주'], ['/month', '이달'], ['/quarter', '이번 분기'], ['/year', '올해']];
 
 export function periodTabs(active) {
   return `<nav class="ptabs" aria-label="운세 기간">${PERIOD_TABS.map(([href, label]) =>
@@ -1073,12 +1075,13 @@ export function matchView(me, people, other, result) {
   const head = `<div class="page-head"><h1>궁합 <span class="h1-hanja">宮合</span></h1></div>`;
   if (!me) return `${head}<div class="empty"><p>먼저 내 생년월일을 입력해 주세요. 그다음 함께 볼 사람을 추가하면 궁합을 볼 수 있어요.</p><a class="btn" href="#/me">내 정보 입력</a></div>`;
   if (!people.length) {
-    return `${head}<div class="empty"><p>가족, 친구, 연인의 생년월일을 저장하면 나와의 궁합을 동양과 서양으로 함께 볼 수 있어요.</p><a class="btn" href="#/person/new">함께 볼 사람 추가</a></div>`;
+    return `${head}<div class="empty"><p>가족, 친구, 연인의 생년월일을 저장하면 나와의 궁합을 동양과 서양으로 함께 볼 수 있어요.</p><a class="btn" href="#/person/new">함께 볼 사람 추가</a> <a class="btn ghost" href="#/duo">저장 없이 두 사람 비교</a></div>`;
   }
   const picker = `<div class="match-pick">
     <span class="mp-me">${esc(me.name || '나')}</span><span class="mp-x">×</span>
     <label class="mp-sel"><select id="matchWho" aria-label="함께 볼 사람">${people.map((p) => `<option value="${p.id}"${other && p.id === other.id ? ' selected' : ''}>${esc(p.name)} · ${esc(p.relation || '')}</option>`).join('')}</select></label>
     <a class="link-btn" href="#/person/new">사람 추가</a>
+    <a class="link-btn" href="#/duo">저장 없이 비교</a>
   </div>`;
   if (!other || !result) return `${head}${picker}`;
   const r = { title: `${me.name || '나'} × ${other.name}`, total: result.total, tier: result.level, advice: result.text, east: result.east, west: result.west };
@@ -1190,14 +1193,14 @@ export function saveRow(id, label = '보관함에 저장') {
   return `<div class="save-row"><button class="btn ghost" type="button" id="${id}">${label}</button><span class="save-note" id="${id}Note" aria-live="polite"></span></div>`;
 }
 
-function trendSvg(hist, sum) {
+function trendSvg(hist, sum, label = '지난 30일 내 점수 흐름') {
   const W = 320, H = 104, L = 8, R = 28, T = 10, B = 94;
   const x = (i) => L + (i * (W - L - R)) / (hist.length - 1);
   const y = (v) => B - ((v - 50) / 50) * (B - T);
   const pts = hist.map((h, i) => `${x(i).toFixed(1)},${y(h.total).toFixed(1)}`).join(' ');
   const grid = [60, 70, 80, 90].map((v) => `<line class="tr-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tr-lbl" x="${W - R + 6}" y="${y(v) + 4}">${v}</text>`).join('');
   const dot = (h, cls, r = 3.5) => `<circle class="${cls}" cx="${x(hist.indexOf(h)).toFixed(1)}" cy="${y(h.total).toFixed(1)}" r="${r}"/>`;
-  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="지난 30일 내 점수 흐름">${grid}<polyline class="tr-line" points="${pts}"/>${dot(sum.best, 'tr-hi')}${dot(sum.worst, 'tr-lo')}${dot(hist[hist.length - 1], 'tr-now', 4.5)}</svg>`;
+  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${grid}<polyline class="tr-line" points="${pts}"/>${dot(sum.best, 'tr-hi')}${dot(sum.worst, 'tr-lo')}${dot(hist[hist.length - 1], 'tr-now', 4.5)}</svg>`;
 }
 
 export function vaultList(items, filter, today) {
@@ -1219,7 +1222,21 @@ export function vaultList(items, filter, today) {
   }).join('')}</ul>`;
 }
 
-export function vaultView(items, filter, profile, today, visits) {
+/* ───────── 출석 배지 ───────── */
+function badgeSection(stats) {
+  if (!stats) return '';
+  const list = badgeList(stats);
+  const got = list.filter((b) => b.got).length;
+  return `<section class="sec">
+    ${secHead('배지', `${got} / ${list.length}`)}
+    <ul class="plain badges">${list.map((b) => `<li class="${b.got ? 'got' : ''}" title="${esc(b.desc)}">
+      <span class="bd-mark">${b.mark}</span><b>${b.got ? esc(b.name) : '?'}</b>
+      <small>${b.got ? esc(b.desc) : `${esc(b.name)} · ${b.now}/${b.goal}`}</small></li>`).join('')}</ul>
+    <p class="note">찾아오고, 뽑고, 담을 때마다 하나씩 열려요. 연속 배지는 한 번 얻으면 사라지지 않아요.</p>
+  </section>`;
+}
+
+export function vaultView(items, filter, profile, today, visits, stats) {
   const hist = scoreHistory(profile, today, 30);
   const sum = summarize(hist);
   const run = streak(visits, today);
@@ -1238,6 +1255,7 @@ export function vaultView(items, filter, profile, today, visits) {
     ${run ? `<p class="vault-streak"><b>${run}</b>일 연속 확인 중 · 이번 달 ${monthVisits(visits, today.year, today.month)}일 방문</p>` : ''}
     ${record}
   </section>
+  ${badgeSection(stats)}
   <section class="sec">
     ${secHead('저장한 것', `${items.length}`)}
     <div class="chips" role="radiogroup" aria-label="종류" id="vaultFilter">${chips}</div>
@@ -1361,4 +1379,66 @@ export function newYearView(profile, r, year) {
     <ul class="plain readings">${r.topics.map((t) => `<li><b>${esc(t.ko)} ${t.total}점</b>${esc(t.head)}</li>`).join('')}</ul>
   </section>
   ${nav}`;
+}
+
+/* ───────── 이번 주 흐름 ───────── */
+export function weekView(profile, w) {
+  const today = getToday();
+  if (!profile) return `${dateline(today)}${periodTabs('/week')}${needProfile('east')}`;
+  const hist = w.days.map((d) => ({ ...d }));
+  const sum = { best: w.best, worst: w.worst };
+  const label = (d) => `${d.month}.${d.day} ${d.weekday}`;
+  const summary = w.flat
+    ? '이번 주는 점수의 오르내림이 크지 않아요. 평소 리듬대로 차분히 보내기 좋은 한 주입니다.'
+    : `가장 힘이 실리는 날은 <b>${label(w.best)}요일(${w.best.total}점)</b>, 천천히 가면 좋은 날은 <b>${label(w.worst)}요일(${w.worst.total}점)</b>이에요. 중요한 일은 높은 날에, 쉼과 정리는 낮은 날에 맞춰 보세요.`;
+  return `${dateline(today)}
+  ${periodTabs('/week')}
+  <div class="page-head"><p class="kicker">이번 주 흐름</p><h1>오늘부터 일주일</h1></div>
+  <section class="sec">
+    ${trendSvg(hist, sum, '앞으로 7일 점수 흐름')}
+    <p class="note trend-note">초록 점은 가장 높은 날, 주홍 점은 가장 낮은 날, 검은 점은 오늘이에요</p>
+    <p class="lede">${summary}</p>
+    <ol class="plain wk-days">${w.days.map((d) => `<li class="${d.tone}${d.today ? ' now' : ''}">
+      <span class="wk-d">${d.month}.${d.day}<small>${d.weekday}${d.today ? ' · 오늘' : ''}</small></span>
+      <span class="ss-bar"><i style="width:${Math.max(4, Math.round(((d.total - 50) / 50) * 100))}%"></i></span>
+      <span class="wk-t">${esc(d.tier)}</span><b>${d.total}</b></li>`).join('')}</ol>
+    <p class="note">일주일 평균 ${w.avg}점. 날마다 동양과 서양 점수를 평균한 값이며, 오늘 점수와 같은 방식이에요.</p>
+  </section>`;
+}
+
+/* ───────── 두 사람 비교(저장하지 않고 바로 보기) ───────── */
+function duoPerson(n, p) {
+  const date = p && p.year ? `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}` : '';
+  const time = p && p.hour !== undefined && p.hour !== null && p.hour !== '' ? `${String(p.hour).padStart(2, '0')}:${String(p.minute || 0).padStart(2, '0')}` : '';
+  return `<fieldset class="field duo-p">
+    <legend>${n === 1 ? '첫 번째 사람' : '두 번째 사람'}</legend>
+    <label class="field"><span>이름 또는 별명 <em>선택</em></span><input name="name${n}" maxlength="20" value="${esc(p?.name || '')}"></label>
+    <label class="field"><span>생년월일 <em>양력</em></span><input name="date${n}" type="date" min="1900-01-01" max="2100-12-31" value="${date}"></label>
+    <label class="field"><span>태어난 시각 <em>모르면 비워 두세요</em></span><input name="time${n}" type="time" value="${time}"></label>
+  </fieldset>`;
+}
+
+export function duoView(me) {
+  return `<div class="page-head"><h1>두 사람 비교 <span class="h1-hanja">對</span></h1></div>
+  <p class="lede">저장하지 않고 생일만 넣어 바로 궁합을 봐요. 입력한 내용은 이 화면을 벗어나면 남지 않습니다.</p>
+  <form class="form duo" id="duoForm" autocomplete="off" novalidate>
+    ${duoPerson(1, me)}
+    ${duoPerson(2, null)}
+    <p class="conv" id="duoErr" aria-live="polite"></p>
+    <div class="row"><button class="btn" type="submit">궁합 보기</button></div>
+  </form>
+  <div id="duoResult"></div>`;
+}
+
+export function duoResult(a, b, result) {
+  const r = { title: `${a.name || '첫 번째 사람'} × ${b.name || '두 번째 사람'}`, total: result.total, tier: result.level, advice: result.text, east: result.east, west: result.west };
+  return `<section class="sec" id="duoOut">
+    ${periodScore(r)}
+    <div class="split">
+      <section class="col east">${sideLabel('east')}<p class="kicker">사주 궁합 · 일간 · 일지 · 띠 · 오행</p><h3 class="headline sm">동양 ${result.east.score}점</h3>${matchReasons(result.east)}</section>
+      <section class="col west">${sideLabel('west')}<p class="kicker">별자리 궁합 · 태양 · 달 · 금성 · 화성</p><h3 class="headline sm">서양 ${result.west.score}점</h3>${matchReasons(result.west)}
+        ${result.west.uncertain ? '<p class="note">태어난 시각을 모르는 사람이 있어 달의 위치는 정오 기준으로 봤어요.</p>' : ''}</section>
+    </div>
+    <p class="note">재미로 보는 궁합이에요. 마음에 들면 <a href="#/person/new">사람 추가</a>로 저장해 두고 보관함에도 담을 수 있어요.</p>
+  </section>`;
 }

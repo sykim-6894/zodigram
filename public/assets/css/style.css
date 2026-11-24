@@ -783,3 +783,27 @@ fieldset.field legend em { font-style: normal; color: var(--ink-3); margin-left:
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 16px; }
 .chip { font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--rule); background: transparent; color: var(--ink-2, var(--ink)); cursor: pointer; }
 .chip:hover { border-color: var(--ink); }
+
+/* 출석 배지 */
+.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
+.badges li { border: 1px solid var(--rule); padding: 12px 8px; text-align: center; display: grid; gap: 4px; color: var(--ink-3); }
+.badges li.got { color: var(--ink); border-color: var(--ink-3); }
+.bd-mark { font: 400 22px/1 var(--serif); }
+.badges li:not(.got) .bd-mark { opacity: .35; }
+.badges b { font: 600 14px/1.3 var(--serif); }
+.badges small { font-size: 12px; line-height: 1.4; }
+
+/* 이번 주 흐름 */
+.wk-days { margin: 16px 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.wk-days li { display: grid; grid-template-columns: 84px 1fr 64px 32px; align-items: center; gap: 12px; font-size: 14px; }
+.wk-d { font: 600 15px/1.2 var(--serif); }
+.wk-d small { display: block; font-size: 12px; line-height: 1.3; color: var(--ink-3); }
+.wk-days .ss-bar { height: 6px; background: var(--rule); display: block; }
+.wk-days .ss-bar i { display: block; height: 100%; background: var(--ink); }
+.wk-days li.c .ss-bar i { background: var(--ink-3); }
+.wk-t { color: var(--ink-3); font-size: 13px; }
+.wk-days b { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 두 사람 비교 */
+.duo-p { border: 1px solid var(--rule); padding: 16px; margin: 0 0 16px; }
+.duo-p legend { padding: 0 6px; font: 600 15px/1.3 var(--serif); }
