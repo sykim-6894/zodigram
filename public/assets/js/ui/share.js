@@ -1,5 +1,6 @@
 // 오늘의 운세를 1080×1350 이미지 카드로 그려 공유하거나 저장한다. (외부 라이브러리 없이 Canvas)
 import { getToday, getEast, getWest, getDailyHexagram, getScore } from '../core/fortune.js';
+import { getLucky } from '../core/lucky.js';
 import { SITE_ORIGIN, publicUrl, apiBase, shareData, isShareCancel } from '../core/env.js';
 
 const W = 1080, H = 1350, PAD = 92;
@@ -87,6 +88,7 @@ function cardContent(profile) {
       east: { side: 'east', kicker: `오늘의 일진 ${e.daily.todayPillar.hanja} · ${e.daily.tenGod} · ${e.animal.name}띠`, title: e.daily.title, body: e.daily.text },
       west: { side: 'west', kicker: `${w.sign.ko} · 달이 ${w.moon.moonSignName}에 · 오늘의 카드 ${w.tarot.card.ko}${w.tarot.reversed ? '(역)' : ''}`, title: `${w.moon.houseInfo.area}에 빛이 듭니다`, body: w.moon.houseInfo.text },
       quote: sc.message.east,
+      lucky: getLucky(profile),
     };
   }
   const hex = getDailyHexagram(null);
@@ -96,6 +98,7 @@ function cardContent(profile) {
     east: { side: 'east', kicker: `오늘의 괘 · ${hex.num}. ${hex.fullName} ${hex.hanja}`, title: hex.keyword, body: hex.text },
     west: { side: 'west', kicker: `오늘의 달 · ${today.moon.name} ${Math.round(today.moon.illumination * 100)}%`, title: today.westQuote.text, body: today.westQuote.src },
     quote: today.eastQuote,
+    lucky: getLucky(null),
   };
 }
 
@@ -142,7 +145,20 @@ export async function drawTodayCard(profile) {
   y = block(ctx, y + 44, c.west);
 
   // 한마디
-  const qy = Math.max(y + 24, H - 250);
+  // 행운 한 줄: 색 · 숫자 · 방향 · 시간 · 음식
+  const ly = Math.max(y + 36, H - 330);
+  rule(ctx, ly - 30, 1, C.rule);
+  const lk = c.lucky;
+  text(ctx, '오늘의 행운', PAD, ly + 12, `500 22px ${SANS}`, C.ink3);
+  ctx.fillStyle = lk.color.hex;
+  ctx.fillRect(PAD + 150, ly - 8, 28, 28);
+  ctx.strokeStyle = C.rule; ctx.lineWidth = 1.5;
+  ctx.strokeRect(PAD + 150, ly - 8, 28, 28);
+  const lt = `${lk.color.name} · 숫자 ${lk.numbers.join('·')} · ${lk.direction} · ${lk.time.name.replace(/\(.\)/, '')} · ${lk.food}`;
+  ctx.font = `400 24px ${SANS}`;
+  text(ctx, wrap(ctx, lt, W - PAD * 2 - 200, 1)[0], PAD + 192, ly + 12, `400 24px ${SANS}`, C.ink2);
+
+  const qy = Math.max(ly + 50, H - 250);
   rule(ctx, qy, 1.5);
   ctx.fillStyle = C.east;
   ctx.fillRect(PAD, qy + 34, 4, 82);
