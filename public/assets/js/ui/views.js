@@ -1193,44 +1193,46 @@ export function saveRow(id, label = '보관함에 저장') {
   return `<div class="save-row"><button class="btn ghost" type="button" id="${id}">${label}</button><span class="save-note" id="${id}Note" aria-live="polite"></span></div>`;
 }
 
-function trendSvg(hist, sum, label = '지난 30일 내 점수 흐름') {
-  const W = 320, H = 104, L = 8, R = 28, T = 10, B = 94;
-  const x = (i) => L + (i * (W - L - R)) / (hist.length - 1);
-  const y = (v) => B - ((v - 50) / 50) * (B - T);
-  const pts = hist.map((h, i) => `${x(i).toFixed(1)},${y(h.total).toFixed(1)}`).join(' ');
-  const grid = [60, 70, 80, 90].map((v) => `<line class="tr-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tr-lbl" x="${W - R + 6}" y="${y(v) + 4}">${v}</text>`).join('');
-  const dot = (h, cls, r = 3.5) => `<circle class="${cls}" cx="${x(hist.indexOf(h)).toFixed(1)}" cy="${y(h.total).toFixed(1)}" r="${r}"/>`;
-  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${grid}<polyline class="tr-line" points="${pts}"/>${dot(sum.best, 'tr-hi')}${dot(sum.worst, 'tr-lo')}${dot(hist[hist.length - 1], 'tr-now', 4.5)}</svg>`;
-}
-
-/** 이번 주 그래프: 부드러운 선 + 면, 날마다 점수와 요일·날짜, 가장 높은·낮은 날 강조 */
-function weekSvg(w) {
-  const W = 320, H = 170, L = 18, R = 18, T = 34, B = 120;
-  const tot = w.days.map((d) => d.total);
+/**
+ * 점수 흐름 그래프(부드러운 선 + 면). items: [{ total, x1, x2 }] — x1·x2는 점 아래 글자(위·아래 두 줄).
+ * 가장 높은 점(초록)·낮은 점(주홍)·nowAt 점(검정)을 강조한다.
+ * opts.dense: 점이 많을 때 — 강조한 점에만 값과 날짜를 적고, 아래 글자는 처음·가운데·끝만 쓴다.
+ */
+function flowSvg(items, { label, id, nowAt = -1, dense = false, small = false }) {
+  const W = 320, L = 18, R = 18, T = 34, B = 120, H = dense ? B + 30 : B + 48;
+  const tot = items.map((d) => d.total);
   const lo = Math.floor((Math.min(...tot) - 6) / 5) * 5, hi = Math.ceil((Math.max(...tot) + 6) / 5) * 5;
-  const x = (i) => L + (i * (W - L - R)) / (w.days.length - 1);
+  const x = (i) => L + (i * (W - L - R)) / (items.length - 1);
   const y = (v) => B - ((v - lo) / (hi - lo)) * (B - T);
-  const P = w.days.map((d, i) => [x(i), y(d.total)]);
+  const f = (n) => n.toFixed(1);
+  const P = items.map((d, i) => [x(i), y(d.total)]);
+  const bestAt = tot.indexOf(Math.max(...tot)), worstAt = tot.indexOf(Math.min(...tot));
   // 곡선: 이웃 점으로 기울기를 잡되 제어점이 두 점 사이를 넘지 않게 해 출렁임을 막는다
-  let line = `M${P[0][0].toFixed(1)},${P[0][1].toFixed(1)}`;
+  let line = `M${f(P[0][0])},${f(P[0][1])}`;
   for (let i = 0; i < P.length - 1; i++) {
     const [p0, p1, p2, p3] = [P[Math.max(0, i - 1)], P[i], P[i + 1], P[Math.min(P.length - 1, i + 2)]];
     const cy = (v) => Math.min(Math.max(v, Math.min(p1[1], p2[1])), Math.max(p1[1], p2[1]));
-    line += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)},${cy(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)},${cy(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    line += ` C${f(p1[0] + (p2[0] - p0[0]) / 6)},${f(cy(p1[1] + (p2[1] - p0[1]) / 6))} ${f(p2[0] - (p3[0] - p1[0]) / 6)},${f(cy(p2[1] - (p3[1] - p1[1]) / 6))} ${f(p2[0])},${f(p2[1])}`;
   }
-  const area = `${line} L${P.at(-1)[0].toFixed(1)},${B} L${P[0][0].toFixed(1)},${B} Z`;
-  const grid = [lo, (lo + hi) / 2, hi].map((v) => `<line class="wk-grid" x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>`).join('');
-  const pts = w.days.map((d, i) => {
-    const cls = d === w.best ? 'hi' : d === w.worst ? 'lo' : d.today ? 'now' : '';
+  const area = `${line} L${f(P.at(-1)[0])},${B} L${f(P[0][0])},${B} Z`;
+  const grid = [lo, (lo + hi) / 2, hi].map((v) => `<line class="wk-grid" x1="${L}" x2="${W - R}" y1="${f(y(v))}" y2="${f(y(v))}"/>`).join('');
+  const ticks = dense ? new Set([0, Math.floor((items.length - 1) / 2), items.length - 1]) : null;
+  const pts = items.map((d, i) => {
+    const cls = i === bestAt ? 'hi' : i === worstAt ? 'lo' : i === nowAt ? 'now' : '';
     const strong = cls === 'hi' || cls === 'lo';
-    return `<g class="wk-pt ${cls}"><circle cx="${P[i][0].toFixed(1)}" cy="${P[i][1].toFixed(1)}" r="${strong ? 6 : d.today ? 5 : 3.5}"/>
-      <text class="wk-v" x="${P[i][0].toFixed(1)}" y="${(P[i][1] - (strong ? 13 : 11)).toFixed(1)}" text-anchor="middle">${d.total}</text>
-      <text class="wk-x" x="${P[i][0].toFixed(1)}" y="${B + 24}" text-anchor="middle">${d.weekday}</text>
-      <text class="wk-x2" x="${P[i][0].toFixed(1)}" y="${B + 40}" text-anchor="middle">${d.today ? '오늘' : `${d.month}.${d.day}`}</text></g>`;
+    const [px, py] = P[i];
+    const mark = dense ? !!cls : true;
+    const anchor = dense ? (px < 60 ? 'start' : px > W - 60 ? 'end' : 'middle') : 'middle';
+    const val = dense ? `${d.x2} · ${d.total}` : d.total;
+    const xs = !dense || ticks.has(i);
+    return `<g class="wk-pt ${cls}">${mark ? `<circle cx="${f(px)}" cy="${f(py)}" r="${strong ? 6 : i === nowAt ? 5 : 3.5}"/>
+      ${dense && !strong ? '' : `<text class="wk-v" x="${f(px)}" y="${f(dense && cls === 'lo' ? py + 20 : py - (strong ? 13 : 11))}" text-anchor="${anchor}">${val}</text>`}` : ''}${xs ? `
+      <text class="wk-x" x="${f(px)}" y="${B + 24}" text-anchor="${dense ? anchor : 'middle'}">${dense ? d.x2 : d.x1}</text>${!dense && d.x2 ? `
+      <text class="wk-x2" x="${f(px)}" y="${B + 40}" text-anchor="middle">${d.x2}</text>` : ''}` : ''}</g>`;
   }).join('');
-  return `<svg class="weekchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="앞으로 7일 점수 흐름">
-    <defs><linearGradient id="wkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".16"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
-    ${grid}<path class="wk-area" d="${area}"/><path class="wk-line" d="${line}"/>${pts}</svg>`;
+  return `<svg class="weekchart${small ? ' sm' : ''}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".16"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
+    ${grid}<path class="wk-area" style="fill:url(#${id})" d="${area}"/><path class="wk-line" d="${line}"/>${pts}</svg>`;
 }
 
 export function vaultList(items, filter, today) {
@@ -1272,7 +1274,7 @@ export function vaultView(items, filter, profile, today, visits, stats) {
   const run = streak(visits, today);
   const record = profile && sum
     ? `<p class="kicker">지난 30일 내 점수</p>
-      ${trendSvg(hist, sum)}
+      ${flowSvg(hist.map((h) => ({ total: h.total, x2: `${h.month}.${h.day}` })), { label: '지난 30일 내 점수 흐름', id: 'fVault', dense: true, nowAt: hist.length - 1 })}
       <p class="note trend-note">초록 점은 가장 높은 날, 주홍 점은 가장 낮은 날, 검은 점은 오늘이에요</p>
       <dl class="facts">${fact('평균', `${sum.avg}점`)}${fact('가장 높은 날', `${sum.best.month}.${sum.best.day} · ${sum.best.total}점`)}${fact('가장 낮은 날', `${sum.worst.month}.${sum.worst.day} · ${sum.worst.total}점`)}</dl>`
     : '<p class="note"><a href="#/me">생년월일을 입력</a>하면 지난 30일의 내 점수 흐름을 볼 수 있어요.</p>';
@@ -1386,7 +1388,6 @@ export function newYearView(profile, r, year) {
   if (!profile) return `${dateline(today)}${periodTabs('/year')}${needProfile('east')}`;
   const y = r.yr;
   const names = (list) => list.map((x) => `${x.month}월`).join(' · ');
-  const maxV = Math.max(...r.months.map((m) => m.total));
   const nav = `<p class="note">${year > 1901 ? `<a href="#/newyear/${year - 1}">${year - 1}년</a> · ` : ''}<a href="#/newyear/${year + 1}">${year + 1}년</a> 신년운세도 볼 수 있어요.</p>`;
   return `${dateline(today)}
   ${periodTabs('/year')}
@@ -1399,7 +1400,8 @@ export function newYearView(profile, r, year) {
   </section>
   <section class="sec">
     ${secHead('월별 흐름', '月')}
-    <ol class="plain ny-months">${r.months.map((m) => `<li class="${m.tone}"><span>${m.month}월</span><span class="ss-bar"><i style="width:${Math.round((m.total / maxV) * 100)}%"></i></span><b>${m.total}</b></li>`).join('')}</ol>
+    ${flowSvg(r.months.map((m) => ({ total: m.total, x1: `${m.month}월` })), { label: `${year}년 월별 점수 흐름`, id: 'fYear', small: true })}
+    <p class="note trend-note">초록 점은 가장 높은 달, 주홍 점은 가장 낮은 달이에요</p>
     <p><b>힘이 실리는 달</b> ${names(r.best)}</p>
     <p><b>천천히 가면 좋은 달</b> ${names(r.careful)}</p>
     <p class="note">월별 점수는 그 달의 월운(동양·서양 평균)입니다. 점수가 낮은 달은 쉬어 가며 정리하는 달로 보세요.</p>
@@ -1423,7 +1425,7 @@ export function weekView(profile, w) {
   ${periodTabs('/week')}
   <div class="page-head"><p class="kicker">이번 주 흐름</p><h1>오늘부터 일주일</h1></div>
   <section class="sec">
-    ${weekSvg(w)}
+    ${flowSvg(w.days.map((d) => ({ total: d.total, x1: d.weekday, x2: d.today ? '오늘' : `${d.month}.${d.day}` })), { label: '앞으로 7일 점수 흐름', id: 'fWeek', nowAt: 0 })}
     <p class="note trend-note">초록 점은 가장 높은 날, 주홍 점은 가장 낮은 날이에요</p>
     <p class="lede">${summary}</p>
     <ol class="plain wk-days">${w.days.map((d) => `<li class="${d.tone}${d.today ? ' now' : ''}">
