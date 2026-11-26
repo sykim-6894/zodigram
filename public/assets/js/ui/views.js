@@ -1193,22 +1193,44 @@ export function saveRow(id, label = '보관함에 저장') {
   return `<div class="save-row"><button class="btn ghost" type="button" id="${id}">${label}</button><span class="save-note" id="${id}Note" aria-live="polite"></span></div>`;
 }
 
-// opts.nowAt: 오늘 점의 위치(기본은 마지막), opts.dates: 표시한 점 옆에 날짜를 적는다
-function trendSvg(hist, sum, label = '지난 30일 내 점수 흐름', opts = {}) {
+function trendSvg(hist, sum, label = '지난 30일 내 점수 흐름') {
   const W = 320, H = 104, L = 8, R = 28, T = 10, B = 94;
   const x = (i) => L + (i * (W - L - R)) / (hist.length - 1);
   const y = (v) => B - ((v - 50) / 50) * (B - T);
   const pts = hist.map((h, i) => `${x(i).toFixed(1)},${y(h.total).toFixed(1)}`).join(' ');
   const grid = [60, 70, 80, 90].map((v) => `<line class="tr-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tr-lbl" x="${W - R + 6}" y="${y(v) + 4}">${v}</text>`).join('');
   const dot = (h, cls, r = 3.5) => `<circle class="${cls}" cx="${x(hist.indexOf(h)).toFixed(1)}" cy="${y(h.total).toFixed(1)}" r="${r}"/>`;
-  const now = hist[opts.nowAt ?? hist.length - 1];
-  const big = opts.dates ? 6.5 : 3.5; // 오늘이 가장 높은 날과 겹쳐도 색이 보이도록
-  const tag = (h) => {
-    const cy = y(h.total);
-    return `<text class="tr-date" x="${Math.min(W - R, Math.max(L + 14, x(hist.indexOf(h)))).toFixed(1)}" y="${(cy < 26 ? cy + 20 : cy - 11).toFixed(1)}" text-anchor="middle">${h.month}.${h.day}</text>`;
-  };
-  const tags = opts.dates ? [...new Set([sum.best, sum.worst, now])].map(tag).join('') : '';
-  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${grid}<polyline class="tr-line" points="${pts}"/>${dot(sum.best, 'tr-hi', big)}${dot(sum.worst, 'tr-lo', big)}${dot(now, 'tr-now', opts.dates ? 3 : 4.5)}${tags}</svg>`;
+  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${grid}<polyline class="tr-line" points="${pts}"/>${dot(sum.best, 'tr-hi')}${dot(sum.worst, 'tr-lo')}${dot(hist[hist.length - 1], 'tr-now', 4.5)}</svg>`;
+}
+
+/** 이번 주 그래프: 부드러운 선 + 면, 날마다 점수와 요일·날짜, 가장 높은·낮은 날 강조 */
+function weekSvg(w) {
+  const W = 320, H = 170, L = 18, R = 18, T = 34, B = 120;
+  const tot = w.days.map((d) => d.total);
+  const lo = Math.floor((Math.min(...tot) - 6) / 5) * 5, hi = Math.ceil((Math.max(...tot) + 6) / 5) * 5;
+  const x = (i) => L + (i * (W - L - R)) / (w.days.length - 1);
+  const y = (v) => B - ((v - lo) / (hi - lo)) * (B - T);
+  const P = w.days.map((d, i) => [x(i), y(d.total)]);
+  // 곡선: 이웃 점으로 기울기를 잡되 제어점이 두 점 사이를 넘지 않게 해 출렁임을 막는다
+  let line = `M${P[0][0].toFixed(1)},${P[0][1].toFixed(1)}`;
+  for (let i = 0; i < P.length - 1; i++) {
+    const [p0, p1, p2, p3] = [P[Math.max(0, i - 1)], P[i], P[i + 1], P[Math.min(P.length - 1, i + 2)]];
+    const cy = (v) => Math.min(Math.max(v, Math.min(p1[1], p2[1])), Math.max(p1[1], p2[1]));
+    line += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)},${cy(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)},${cy(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  const area = `${line} L${P.at(-1)[0].toFixed(1)},${B} L${P[0][0].toFixed(1)},${B} Z`;
+  const grid = [lo, (lo + hi) / 2, hi].map((v) => `<line class="wk-grid" x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>`).join('');
+  const pts = w.days.map((d, i) => {
+    const cls = d === w.best ? 'hi' : d === w.worst ? 'lo' : d.today ? 'now' : '';
+    const strong = cls === 'hi' || cls === 'lo';
+    return `<g class="wk-pt ${cls}"><circle cx="${P[i][0].toFixed(1)}" cy="${P[i][1].toFixed(1)}" r="${strong ? 6 : d.today ? 5 : 3.5}"/>
+      <text class="wk-v" x="${P[i][0].toFixed(1)}" y="${(P[i][1] - (strong ? 13 : 11)).toFixed(1)}" text-anchor="middle">${d.total}</text>
+      <text class="wk-x" x="${P[i][0].toFixed(1)}" y="${B + 24}" text-anchor="middle">${d.weekday}</text>
+      <text class="wk-x2" x="${P[i][0].toFixed(1)}" y="${B + 40}" text-anchor="middle">${d.today ? '오늘' : `${d.month}.${d.day}`}</text></g>`;
+  }).join('');
+  return `<svg class="weekchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="앞으로 7일 점수 흐름">
+    <defs><linearGradient id="wkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".16"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
+    ${grid}<path class="wk-area" d="${area}"/><path class="wk-line" d="${line}"/>${pts}</svg>`;
 }
 
 export function vaultList(items, filter, today) {
@@ -1393,8 +1415,6 @@ export function newYearView(profile, r, year) {
 export function weekView(profile, w) {
   const today = getToday();
   if (!profile) return `${dateline(today)}${periodTabs('/week')}${needProfile('east')}`;
-  const hist = w.days;
-  const sum = { best: w.best, worst: w.worst };
   const label = (d) => `${d.month}.${d.day} ${d.weekday}`;
   const summary = w.flat
     ? '이번 주는 점수의 오르내림이 크지 않아요. 평소 리듬대로 차분히 보내기 좋은 한 주입니다.'
@@ -1403,8 +1423,8 @@ export function weekView(profile, w) {
   ${periodTabs('/week')}
   <div class="page-head"><p class="kicker">이번 주 흐름</p><h1>오늘부터 일주일</h1></div>
   <section class="sec">
-    ${trendSvg(hist, sum, '앞으로 7일 점수 흐름', { nowAt: 0, dates: true })}
-    <p class="note trend-note">초록 점은 가장 높은 날, 주홍 점은 가장 낮은 날, 검은 점은 오늘이에요</p>
+    ${weekSvg(w)}
+    <p class="note trend-note">초록 점은 가장 높은 날, 주홍 점은 가장 낮은 날이에요</p>
     <p class="lede">${summary}</p>
     <ol class="plain wk-days">${w.days.map((d) => `<li class="${d.tone}${d.today ? ' now' : ''}">
       <span class="wk-d">${d.month}.${d.day}<small>${d.weekday}${d.today ? ' · 오늘' : ''}</small></span>
