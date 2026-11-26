@@ -557,7 +557,7 @@ fieldset.field legend { padding: 0; font-size: 14px; color: var(--ink-2); margin
 .share-body { min-width: 0; }
 .share-lede { color: var(--ink-2); margin-bottom: 16px; }
 .share-preview {
-  width: 120px; aspect-ratio: 4 / 5; order: 2;
+  width: 200px; aspect-ratio: 4 / 5; order: 2;
   background: var(--paper-2); border: 1px solid var(--rule);
 }
 .share-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -805,8 +805,8 @@ fieldset.field legend em { font-style: normal; color: var(--ink-3); margin-left:
 .wk-days b { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 두 사람 비교 */
-.duo-p { border: 1px solid var(--rule); padding: 16px; margin: 0 0 16px; }
-.duo-p legend { padding: 0 6px; font: 600 15px/1.3 var(--serif); }
+fieldset.field.duo-p { border: 1px solid var(--rule); padding: 16px 16px 4px; margin: 0 0 16px; }
+fieldset.field.duo-p legend { padding: 0 6px; font: 600 15px/1.3 var(--serif); }
 
 /* 이번 주 그래프 */
 .weekchart { display: block; width: 100%; max-width: 640px; height: auto; color: var(--ink); }
