@@ -1193,14 +1193,22 @@ export function saveRow(id, label = '보관함에 저장') {
   return `<div class="save-row"><button class="btn ghost" type="button" id="${id}">${label}</button><span class="save-note" id="${id}Note" aria-live="polite"></span></div>`;
 }
 
-function trendSvg(hist, sum, label = '지난 30일 내 점수 흐름') {
+// opts.nowAt: 오늘 점의 위치(기본은 마지막), opts.dates: 표시한 점 옆에 날짜를 적는다
+function trendSvg(hist, sum, label = '지난 30일 내 점수 흐름', opts = {}) {
   const W = 320, H = 104, L = 8, R = 28, T = 10, B = 94;
   const x = (i) => L + (i * (W - L - R)) / (hist.length - 1);
   const y = (v) => B - ((v - 50) / 50) * (B - T);
   const pts = hist.map((h, i) => `${x(i).toFixed(1)},${y(h.total).toFixed(1)}`).join(' ');
   const grid = [60, 70, 80, 90].map((v) => `<line class="tr-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tr-lbl" x="${W - R + 6}" y="${y(v) + 4}">${v}</text>`).join('');
   const dot = (h, cls, r = 3.5) => `<circle class="${cls}" cx="${x(hist.indexOf(h)).toFixed(1)}" cy="${y(h.total).toFixed(1)}" r="${r}"/>`;
-  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${grid}<polyline class="tr-line" points="${pts}"/>${dot(sum.best, 'tr-hi')}${dot(sum.worst, 'tr-lo')}${dot(hist[hist.length - 1], 'tr-now', 4.5)}</svg>`;
+  const now = hist[opts.nowAt ?? hist.length - 1];
+  const big = opts.dates ? 6.5 : 3.5; // 오늘이 가장 높은 날과 겹쳐도 색이 보이도록
+  const tag = (h) => {
+    const cy = y(h.total);
+    return `<text class="tr-date" x="${Math.min(W - R, Math.max(L + 14, x(hist.indexOf(h)))).toFixed(1)}" y="${(cy < 26 ? cy + 20 : cy - 11).toFixed(1)}" text-anchor="middle">${h.month}.${h.day}</text>`;
+  };
+  const tags = opts.dates ? [...new Set([sum.best, sum.worst, now])].map(tag).join('') : '';
+  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${grid}<polyline class="tr-line" points="${pts}"/>${dot(sum.best, 'tr-hi', big)}${dot(sum.worst, 'tr-lo', big)}${dot(now, 'tr-now', opts.dates ? 3 : 4.5)}${tags}</svg>`;
 }
 
 export function vaultList(items, filter, today) {
@@ -1385,7 +1393,7 @@ export function newYearView(profile, r, year) {
 export function weekView(profile, w) {
   const today = getToday();
   if (!profile) return `${dateline(today)}${periodTabs('/week')}${needProfile('east')}`;
-  const hist = w.days.map((d) => ({ ...d }));
+  const hist = w.days;
   const sum = { best: w.best, worst: w.worst };
   const label = (d) => `${d.month}.${d.day} ${d.weekday}`;
   const summary = w.flat
@@ -1395,7 +1403,7 @@ export function weekView(profile, w) {
   ${periodTabs('/week')}
   <div class="page-head"><p class="kicker">이번 주 흐름</p><h1>오늘부터 일주일</h1></div>
   <section class="sec">
-    ${trendSvg(hist, sum, '앞으로 7일 점수 흐름')}
+    ${trendSvg(hist, sum, '앞으로 7일 점수 흐름', { nowAt: 0, dates: true })}
     <p class="note trend-note">초록 점은 가장 높은 날, 주홍 점은 가장 낮은 날, 검은 점은 오늘이에요</p>
     <p class="lede">${summary}</p>
     <ol class="plain wk-days">${w.days.map((d) => `<li class="${d.tone}${d.today ? ' now' : ''}">

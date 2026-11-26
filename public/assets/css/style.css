@@ -746,6 +746,7 @@ fieldset.field legend em { font-style: normal; color: var(--ink-3); margin-left:
 .tr-line { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 .tr-hi { fill: var(--el-wood); }
 .tr-lo { fill: var(--east); }
+.tr-date { font: 11px var(--sans); fill: var(--ink-2); }
 .tr-now { fill: var(--ink); stroke: var(--paper); stroke-width: 2; }
 .trend-note { margin: 8px 0 0; }
 .vault-list li { padding: 0; }
